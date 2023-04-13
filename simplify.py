@@ -8,7 +8,7 @@ from logic1.firstorder.quantified import QuantifiedFormula, All, Ex
 from logic1.firstorder.truth      import T, F, TruthValue
 
 from sympy                 import Expr as Term, Symbol as Variable, Add, Mul
-from sympy.abc             import x, y 
+from sympy.abc             import x, y
 from sympy.logic.boolalg   import Boolean
 from sympy.polys           import Poly
 from sympy.polys.domains   import RR
@@ -77,7 +77,7 @@ def simplify(φ: Formula) -> Formula:
         (l, r) = φ.args
 
         if isinstance(l, Real) and isinstance(r, Real):
-            result = φ.sympy_func(*φ.args)
+            result = φ.sympy_func(l, r)
             if isinstance(result, Boolean):
                 return encode(bool(result))
             else:
@@ -94,7 +94,7 @@ def simplify(φ: Formula) -> Formula:
     def term_cmp(s: Term, t: Term):
         if isinstance(s, Real) and isinstance(t, Real):
             return t - s
-        
+
         (sp, tp) = (s.as_poly(), t.as_poly())
 
         if sp is None or tp is None:
@@ -104,25 +104,30 @@ def simplify(φ: Formula) -> Formula:
                 return 1
             else:
                 raise NotImplementedError()
-        else:
-            if sp.degree() != tp.degree():
-                return tp.degree() - sp.degree()
-            else:
-                symbols = sorted(sp.free_symbols.union(tp.free_symbols), key=lambda x: x.sort_key())
-                mons = sorted(itermonomials(symbols, max(sp.degree(), tp.degree())), key=monomial_key('lex', symbols), reverse=True)
 
-                def coeff_monomial(p: Poly, m):
-                    try:
-                        result = p.coeff_monomial(m) 
-                        return 0 if result is None else result
-                    except ValueError:
-                        return 0
-    
-                def coeffs(p: Poly, mons):
-                    return tuple([coeff_monomial(p, mon) for mon in mons])
+        if sp.degree() != tp.degree():
+            return tp.degree() - sp.degree()
 
-                return -cmp(coeffs(sp, mons), coeffs(tp, mons)) # type: ignore
-    
+        symbols = sorted(sp.free_symbols.union(tp.free_symbols), key=lambda x: x.sort_key())
+        mons = sorted(itermonomials(symbols, sp.degree()), key=monomial_key('lex', symbols), reverse=True)
+
+        def coeff_monomial(p: Poly, m):
+            """
+            Utility function, since calling Poly.coeff_monomial with
+            a monomial that does not occur in the polynomial will
+            not just return None, but raise a ValueError.
+            """
+            try:
+                result = p.coeff_monomial(m)
+                return 0 if result is None else result
+            except ValueError:
+                return 0
+
+        def coeffs(p: Poly):
+            return tuple([coeff_monomial(p, mon) for mon in mons])
+
+        return -cmp(coeffs(sp), coeffs(tp)) # type: ignore
+
     def formula_cmp(φ: Formula, ψ: Formula):
         if isinstance(φ, AtomicFormula) and isinstance(ψ, AtomicFormula):
             # Assumes that both atomic formulae are simplified.
@@ -152,46 +157,50 @@ def simplify(φ: Formula) -> Formula:
         """
         return Or(inv_not(φ), ψ)
 
-    if φ is T or φ is F:
+    # φ = ○ where ○ is ⊤ or ⊥
+    if isinstance(φ, TruthValue):
         return φ
 
+    # φ = s ○ t where ○ is >, ≥, <, ≤, =, ≠
+    elif isinstance(φ, BinaryAtomicFormula):
+        return simplify_atom(φ)
+
+    # φ = φ' → φ''
+    elif isinstance(φ, Implies):
+        return simplify(And(implies(*φ.args)))
+
+    # φ = φ' ↔ φ''
+    elif isinstance(φ, Equivalent):
+        return simplify(And(implies(*φ.args), implies(*reversed(φ.args))))
+
+    # φ = ○x.ψ where ○ is ∀ or ∃
     elif isinstance(φ, QuantifiedFormula):
-        if φ.var not in φ.arg.get_vars().free:
-            return simplify(φ.arg)
-        else:
-            return φ.func(φ.var, simplify(φ.arg))
-    
+        (x, ψ) = (φ.var, φ.arg)
+        return simplify(ψ) if x not in ψ.get_vars().free else φ.func(x, simplify(ψ))
+
+    # φ = ¬ψ
     elif isinstance(φ, Not):
-        if isinstance(φ.arg, TruthValue):
-            return T if φ.arg is F else F
-        elif isinstance(φ.arg, AndOr):
+        ψ = φ.arg
+        if isinstance(ψ, TruthValue):
+            return encode(ψ is F)
+        elif isinstance(ψ, AndOr):
             # De Morgan's Law
             return φ.dual_func(*[simplify(inv_not(x)) for x in φ.args])
-        elif isinstance(φ.arg, BinaryAtomicFormula):
-            return simplify(φ.arg.dual_func(*φ.arg.args))
+        elif isinstance(ψ, BinaryAtomicFormula):
+            # Push negation down into atomic formula.
+            return simplify(ψ.dual_func(*ψ.args))
         else:
-            raise NotImplemented()
+            raise NotImplemented("unreachable")
 
+    # φ = ψ₁ ○ … ○ ψₙ where ○ is ∧ or ∨
     elif isinstance(φ, AndOr):
         (id, dual) = (T, F) if isinstance(φ, And) else (F, T)
         args = tuple(filter(lambda x: x is not id, map(simplify, φ.args)))
-
-        # TODO: Syntactically simplify based on args.
-
         if not args:
             return id
         elif dual in args:
             return dual
         else:
             return φ.func(*sorted(args, key=cmp_to_key(formula_cmp))) # type: ignore
-    
-    elif isinstance(φ, Implies):
-        return simplify(And(implies(*φ.args)))
-    
-    elif isinstance(φ, Equivalent):
-        return simplify(And(implies(*φ.args), implies(*reversed(φ.args))))
-    
-    elif isinstance(φ, BinaryAtomicFormula):
-        return simplify_atom(φ)
 
     return φ
