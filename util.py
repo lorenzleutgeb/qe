@@ -4,8 +4,6 @@ from logic1.atomlib.sympy import AtomicFormula, BinaryAtomicFormula, Eq, Ne
 from sympy.abc import x, y
 from sympy.polys import Poly
 
-from util import *
-
 
 def closure(τ: type[QuantifiedFormula], φ: Formula) -> Formula:
     xs = φ.get_vars().free

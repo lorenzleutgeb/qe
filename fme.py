@@ -115,13 +115,20 @@ def fme(φ: Formula, x, eliminate_unbounded: bool = True) -> Formula:
     else:
         # Blow up exponentially!
         for (loweri, upperi) in product(lower, upper):
-            print("Combining: " + str((loweri, upperi)))
+            logging.debug(
+                "Combining lower bound "
+                + str(loweri)
+                + " and upper bound "
+                + str(upperi)
+            )
             (lp, up) = (poly(loweri), poly(upperi))
             (lps, ups) = (
-                lp.mul_ground(abs(up.coeff_monomial(x))),
-                up.mul_ground(lp.coeff_monomial(x)),
+                lp.mul_ground(up.coeff_monomial(x)),
+                up.mul_ground(abs(lp.coeff_monomial(x))),
             )
-            result.append((combine_op(loweri, upperi))(lps.add(ups).as_expr(), 0))
+            combo = (combine_op(loweri, upperi))(lps.add(ups).as_expr(), 0)
+            logging.debug(combo)
+            result.append(combo)
 
     if eliminate_unbounded:
         result = remove_unbounded_list(result)
