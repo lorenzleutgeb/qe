@@ -7,9 +7,9 @@ from logic1.firstorder.formula    import Formula
 from logic1.firstorder.quantified import QuantifiedFormula, All, Ex
 from logic1.firstorder.truth      import T, F, TruthValue
 
-from sympy                 import Expr as Term, Symbol as Variable, Add, Mul
+from sympy                 import Expr as Term, Symbol as Variable, Add, Mul, true, false
 from sympy.abc             import x, y
-from sympy.logic.boolalg   import Boolean
+from sympy.logic.boolalg   import Boolean, BooleanTrue, BooleanFalse
 from sympy.polys           import Poly
 from sympy.polys.domains   import RR
 from sympy.polys.monomials import itermonomials
@@ -19,6 +19,29 @@ from sympy.polys.rings     import ring, PolyElement
 # >>> R, x, y, z = ring("x,y,z", RR, lex)
 # >>> type(x)
 # <class 'sympy.polys.rings.PolyElement'>
+
+def encode(x) -> TruthValue:
+    """
+    >>> encode(True)
+    T
+    >>> encode(False)
+    F
+    >>> encode([])
+    F
+    >>> encode(0)
+    F
+    >>> encode(1)
+    T
+    >>> encode(BooleanFalse())
+    F
+    >>> encode(BooleanTrue())
+    T
+    >>> encode(false)
+    F
+    >>> encode(true)
+    T
+    """
+    return T if x else F
 
 def cmp(a, b) -> int | None:
     if a < b:
@@ -79,7 +102,7 @@ def simplify(φ: Formula) -> Formula:
         if isinstance(l, Real) and isinstance(r, Real):
             result = φ.sympy_func(l, r)
             if isinstance(result, Boolean):
-                return encode(bool(result))
+                return encode(result)
             else:
                 raise NotImplementedError("expected comparison relation to evaluate")
 
@@ -88,7 +111,7 @@ def simplify(φ: Formula) -> Formula:
         if l is None:
             raise NotImplementedError("expected to get a polynomial")
 
-        (ρ, λ) = (φ.converse_func, -1) if isinstance(φ, Lt) or isinstance(φ, Le) else (φ.func, 1)
+        (ρ, λ) = (φ.converse_func, -1) if isinstance(φ, Gt) or isinstance(φ, Ge) else (φ.func, 1)
         return ρ(l / l.content() * λ, 0) # type: ignore
 
     def term_cmp(s: Term, t: Term):
@@ -139,8 +162,6 @@ def simplify(φ: Formula) -> Formula:
         else:
             return 0
 
-    def encode(b: bool) -> TruthValue:
-        return T if b else F
 
     def inv_not(φ: Formula) -> Formula:
         """
@@ -161,9 +182,10 @@ def simplify(φ: Formula) -> Formula:
     if isinstance(φ, TruthValue):
         return φ
 
-    # φ = s ○ t where ○ is >, ≥, <, ≤, =, ≠
+    # φ = s ○ t where ○ is one of >, ≥, <, ≤, =, ≠
     elif isinstance(φ, BinaryAtomicFormula):
-        return simplify_atom(φ)
+        result = simplify_atom(φ)
+        return result
 
     # φ = φ' → φ''
     elif isinstance(φ, Implies):
