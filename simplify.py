@@ -95,7 +95,7 @@ def simplify(φ: Formula) -> Formula:
     >>> simplify(Ex(y, Ex(x, And(Eq(Mul(x, x), 0), Eq(Mul(y, Mul(y, y)), 0)))))
     Ex(y, Ex(x, And(Eq(y**3, 0), Eq(x**2, 0))))
     >>> simplify(Ex(x, Ex(y, Lt(Mul(x, x), Mul(2, Mul(y, y))))))
-    Ex(x, Ex(y, Gt(-x**2 + 2*y**2, 0)))
+    Ex(x, Ex(y, Lt(x**2 - 2*y**2, 0)))
     >>> simplify(Equivalent(Eq(Add(1, 1), 1), Eq(1, 2)))
     T
     >>> simplify(And(Eq(2 * y ** 2, 1), Eq(2 * x ** 2, 1)))

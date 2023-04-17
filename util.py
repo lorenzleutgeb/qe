@@ -1,6 +1,7 @@
-from logic1.firstorder.formula import Formula, And, Not
-from logic1.firstorder.quantified import QuantifiedFormula
-from logic1.atomlib.sympy import AtomicFormula, BinaryAtomicFormula
+from logic1.firstorder.formula import Formula, And, Not, Or
+from logic1.firstorder.quantified import QuantifiedFormula, Ex, All
+from logic1.atomlib.sympy import AtomicFormula, BinaryAtomicFormula, Eq, Ne
+from sympy.abc import x, y
 from sympy.polys import Poly
 
 from util import *
@@ -20,13 +21,13 @@ def no_alternations(τ: type, φ: Formula) -> bool:
     Returns true if all quantifiers in the prefix of φ are
     of type τ.
 
-    >>> no_alternations(Ex, Ex(x, Ex(y, Eq(x = y))))
+    >>> no_alternations(Ex, Ex(x, Ex(y, Eq(x, y))))
     True
-    >>> no_alternations(Ex, All(x, Ex(y, Eq(x = y))))
+    >>> no_alternations(Ex, All(x, Ex(y, Eq(x, y))))
     False
-    >>> no_alternations(All, All(x, All(y, Eq(x = y))))
+    >>> no_alternations(All, All(x, All(y, Eq(x, y))))
     True
-    >>> no_alternations(Ex, All(x, All(y, Eq(x = y))))
+    >>> no_alternations(Ex, All(x, All(y, Eq(x, y))))
     False
     """
     return not isinstance(φ, QuantifiedFormula) or (
@@ -40,9 +41,9 @@ def is_conjunctive(φ: Formula) -> bool:
 
     >>> is_conjunctive(Ex(x, Eq(x, x)))
     True
-    >>> is_conjunctive(Ex(x, Or(Eq(x, x), Neq(x, x)))
+    >>> is_conjunctive(Ex(x, Or(Eq(x, x), Ne(x, x))))
     False
-    >>> is_conjunctive(Ex(x, And(Eq(x, x), Neq(x, x)))
+    >>> is_conjunctive(Ex(x, And(Eq(x, x), Ne(x, x))))
     True
     """
     if isinstance(φ, AtomicFormula):
