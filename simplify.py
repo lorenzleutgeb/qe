@@ -1,24 +1,35 @@
 from functools import cmp_to_key
-from numbers   import Real
+from numbers import Real
 
-from logic1.atomlib.sympy         import AtomicFormula, BinaryAtomicFormula, Eq, Ne, Term, Gt, Lt, Ge, Le
-from logic1.firstorder.boolean    import AndOr, And, Or, Not, Implies, Equivalent
-from logic1.firstorder.formula    import Formula
+from logic1.atomlib.sympy import (
+    AtomicFormula,
+    BinaryAtomicFormula,
+    Eq,
+    Ne,
+    Term,
+    Gt,
+    Lt,
+    Ge,
+    Le,
+)
+from logic1.firstorder.boolean import AndOr, And, Or, Not, Implies, Equivalent
+from logic1.firstorder.formula import Formula
 from logic1.firstorder.quantified import QuantifiedFormula, All, Ex
-from logic1.firstorder.truth      import T, F, TruthValue
+from logic1.firstorder.truth import T, F, TruthValue
 
-from sympy                 import Expr as Term, Symbol as Variable, Add, Mul, true, false
-from sympy.abc             import x, y
-from sympy.logic.boolalg   import Boolean, BooleanTrue, BooleanFalse
-from sympy.polys           import Poly
-from sympy.polys.domains   import RR
+from sympy import Expr as Term, Symbol as Variable, Add, Mul, true, false
+from sympy.abc import x, y
+from sympy.logic.boolalg import Boolean, BooleanTrue, BooleanFalse
+from sympy.polys import Poly
+from sympy.polys.domains import RR
 from sympy.polys.monomials import itermonomials
 from sympy.polys.orderings import lex, monomial_key
-from sympy.polys.rings     import ring, PolyElement
+from sympy.polys.rings import ring, PolyElement
 
 # >>> R, x, y, z = ring("x,y,z", RR, lex)
 # >>> type(x)
 # <class 'sympy.polys.rings.PolyElement'>
+
 
 def encode(x) -> TruthValue:
     """
@@ -43,6 +54,7 @@ def encode(x) -> TruthValue:
     """
     return T if x else F
 
+
 def cmp(a, b) -> int | None:
     if a < b:
         return -1
@@ -52,6 +64,7 @@ def cmp(a, b) -> int | None:
         return 0
     else:
         return None
+
 
 def simplify(φ: Formula) -> Formula:
     """
@@ -96,6 +109,7 @@ def simplify(φ: Formula) -> Formula:
     >>> simplify(Ex(y, Ex(x, Eq(Mul(x, x), Mul(2, Mul(x, x))))))
     Ex(x, Eq(-x**2, 0))
     """
+
     def simplify_atom(φ: AtomicFormula) -> Formula:
         (l, r) = φ.args
 
@@ -111,8 +125,12 @@ def simplify(φ: Formula) -> Formula:
         if l is None:
             raise NotImplementedError("expected to get a polynomial")
 
-        (ρ, λ) = (φ.converse_func, -1) if isinstance(φ, Gt) or isinstance(φ, Ge) else (φ.func, 1)
-        return ρ(l / l.content() * λ, 0) # type: ignore
+        (ρ, λ) = (
+            (φ.converse_func, -1)
+            if isinstance(φ, Gt) or isinstance(φ, Ge)
+            else (φ.func, 1)
+        )
+        return ρ(l / l.content() * λ, 0)  # type: ignore
 
     def term_cmp(s: Term, t: Term):
         if isinstance(s, Real) and isinstance(t, Real):
@@ -131,8 +149,14 @@ def simplify(φ: Formula) -> Formula:
         if sp.degree() != tp.degree():
             return tp.degree() - sp.degree()
 
-        symbols = sorted(sp.free_symbols.union(tp.free_symbols), key=lambda x: x.sort_key())
-        mons = sorted(itermonomials(symbols, sp.degree()), key=monomial_key('lex', symbols), reverse=True)
+        symbols = sorted(
+            sp.free_symbols.union(tp.free_symbols), key=lambda x: x.sort_key()
+        )
+        mons = sorted(
+            itermonomials(symbols, sp.degree()),
+            key=monomial_key("lex", symbols),
+            reverse=True,
+        )
 
         def coeff_monomial(p: Poly, m):
             """
@@ -149,7 +173,7 @@ def simplify(φ: Formula) -> Formula:
         def coeffs(p: Poly):
             return tuple([coeff_monomial(p, mon) for mon in mons])
 
-        return -cmp(coeffs(sp), coeffs(tp)) # type: ignore
+        return -cmp(coeffs(sp), coeffs(tp))  # type: ignore
 
     def formula_cmp(φ: Formula, ψ: Formula):
         if isinstance(φ, AtomicFormula) and isinstance(ψ, AtomicFormula):
@@ -161,7 +185,6 @@ def simplify(φ: Formula) -> Formula:
             return 1
         else:
             return 0
-
 
     def inv_not(φ: Formula) -> Formula:
         """
@@ -223,6 +246,6 @@ def simplify(φ: Formula) -> Formula:
         elif dual in args:
             return dual
         else:
-            return φ.func(*sorted(args, key=cmp_to_key(formula_cmp))) # type: ignore
+            return φ.func(*sorted(args, key=cmp_to_key(formula_cmp)))  # type: ignore
 
     return φ

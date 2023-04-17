@@ -39,6 +39,7 @@
       in rec {
         devShell = pkgs.mkShell {
           buildInputs = with pyPkgs; [
+            black
             pip
             mypy
             pytest

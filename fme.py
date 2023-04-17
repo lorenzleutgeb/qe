@@ -1,6 +1,16 @@
 from logic1.firstorder.formula import Formula, And, Or, Not
 from logic1.firstorder.quantified import All, Ex, QuantifiedFormula
-from logic1.atomlib.sympy import AtomicFormula, BinaryAtomicFormula, Eq, Ne, Term, Gt, Lt, Ge, Le
+from logic1.atomlib.sympy import (
+    AtomicFormula,
+    BinaryAtomicFormula,
+    Eq,
+    Ne,
+    Term,
+    Gt,
+    Lt,
+    Ge,
+    Le,
+)
 from simplify import simplify
 from sympy.polys import Poly
 
@@ -11,93 +21,109 @@ from bound import *
 
 import logging
 
+
 def applicable(φ: Formula) -> bool:
-	"""
-	Assumes that φ is in prenex normal form.
+    """
+    Assumes that φ is in prenex normal form.
 
-	Checks whether this formula admits Fourier-Motzkin eliminiation.
-	"""
-	return no_alternations(Ex, φ) and is_conjunctive(φ)
+    Checks whether this formula admits Fourier-Motzkin eliminiation.
+    """
+    return no_alternations(Ex, φ) and is_conjunctive(φ)
 
-def combine_op(lower: BinaryAtomicFormula, upper: BinaryAtomicFormula) -> type[BinaryAtomicFormula]:
-	if isinstance(lower, Le) and isinstance(upper, Le):
-		return Le
-	if isinstance(lower, Lt) and isinstance(upper, Lt):
-		return Lt
-	if isinstance(lower, Lt) and isinstance(upper, Le):
-		return Lt
-	if isinstance(lower, Le) and isinstance(upper, Lt):
-		return Lt
-	if isinstance(lower, Eq):
-		return type(upper)
-	if isinstance(upper, Eq):
-		return type(lower)
-	raise NotImplementedError()
+
+def combine_op(
+    lower: BinaryAtomicFormula, upper: BinaryAtomicFormula
+) -> type[BinaryAtomicFormula]:
+    if isinstance(lower, Le) and isinstance(upper, Le):
+        return Le
+    if isinstance(lower, Lt) and isinstance(upper, Lt):
+        return Lt
+    if isinstance(lower, Lt) and isinstance(upper, Le):
+        return Lt
+    if isinstance(lower, Le) and isinstance(upper, Lt):
+        return Lt
+    if isinstance(lower, Eq):
+        return type(upper)
+    if isinstance(upper, Eq):
+        return type(lower)
+    raise NotImplementedError()
+
 
 def fme(φ: Formula, x, eliminate_unbounded: bool = True) -> Formula:
-	"""
-	Assumes that φ is in prenex normal form and in conjunctive normal form.
-	"""
-	if not x in φ.get_qvars():
-		return φ
+    """
+    Assumes that φ is in prenex normal form and in conjunctive normal form.
+    """
+    if not x in φ.get_qvars():
+        return φ
 
-	rows = conjunctive_core(φ)
+    rows = conjunctive_core(φ)
 
-	if eliminate_unbounded:
-		rows = remove_unbounded_list(rows)
-		if not x in And(*rows).get_vars().free:
-			return simplify(closure(Ex, And(*rows)))
+    if eliminate_unbounded:
+        rows = remove_unbounded_list(rows)
+        if not x in And(*rows).get_vars().free:
+            return simplify(closure(Ex, And(*rows)))
 
-	upper: list[BinaryAtomicFormula] = []
-	lower: list[BinaryAtomicFormula] = []
-	(both, result) = ([], [])
+    upper: list[BinaryAtomicFormula] = []
+    lower: list[BinaryAtomicFormula] = []
+    (both, result) = ([], [])
 
-	for row in rows:
-		if not isinstance(row, BinaryAtomicFormula):
-			raise NotImplementedError("atoms must be binary")
-		if row.args[1] != 0:
-			raise NotImplementedError("rhs must be zero")
-		if isinstance(row, Ne) or isinstance(row, Gt) or isinstance(row, Ge):
-			raise NotImplementedError("cannot handle relation")
-		if not isinstance(row, Le) and not isinstance(row, Lt) and not isinstance(row, Eq):
-			raise NotImplementedError("unknown relation of type " + str(type(φ)))
-		
-		b = bound(row, x)
-		logging.debug(str(row) + " is " + str(b) + " for " + str(x))
-		if not b:
-			result.append(row)
-		elif b == Bound.UPPER | Bound.LOWER:
-			both.append(row)
-		else:
-			(upper if b == Bound.UPPER else lower).append(row)
-	
-	logging.debug("(upper, lower, both, result) = " + str((upper, lower, both, result)))
+    for row in rows:
+        if not isinstance(row, BinaryAtomicFormula):
+            raise NotImplementedError("atoms must be binary")
+        if row.args[1] != 0:
+            raise NotImplementedError("rhs must be zero")
+        if isinstance(row, Ne) or isinstance(row, Gt) or isinstance(row, Ge):
+            raise NotImplementedError("cannot handle relation")
+        if (
+            not isinstance(row, Le)
+            and not isinstance(row, Lt)
+            and not isinstance(row, Eq)
+        ):
+            raise NotImplementedError("unknown relation of type " + str(type(φ)))
 
-	if not both and (not upper or not lower):
-		if eliminate_unbounded:
-			raise ValueError("expecting all variables to be bounded, but " + str(x) + " is not bounded")
-	elif both:
-		# There is at least one equation for x,
-		# so we can use it to substitute x in
-		# all other rows.
-		e = poly(both[0])
-		a = e.coeff_monomial(x)
-		e = e - (a * x).as_poly()
-		for row in lower + upper + both[1:]:
-			p = poly(row)
-			b = p.coeff_monomial(x)
-			p = (p - (b * x).as_poly()) * a
-			p = p + (-b * e)
-			result.append((row.func)(p.as_expr(), 0)) # type: ignore
-	else:
-		# Blow up exponentially!
-		for (loweri, upperi) in product(lower, upper):
-			print("Combining: " + str((loweri, upperi)))
-			(lp, up) = (poly(loweri), poly(upperi))
-			(lps, ups) = (lp.mul_ground(abs(up.coeff_monomial(x))), up.mul_ground(lp.coeff_monomial(x)))
-			result.append((combine_op(loweri, upperi))(lps.add(ups).as_expr(), 0))
+        b = bound(row, x)
+        logging.debug(str(row) + " is " + str(b) + " for " + str(x))
+        if not b:
+            result.append(row)
+        elif b == Bound.UPPER | Bound.LOWER:
+            both.append(row)
+        else:
+            (upper if b == Bound.UPPER else lower).append(row)
 
-	if eliminate_unbounded:
-		result = remove_unbounded_list(result)
+    logging.debug("(upper, lower, both, result) = " + str((upper, lower, both, result)))
 
-	return simplify(closure(Ex, And(*result)))
+    if not both and (not upper or not lower):
+        if eliminate_unbounded:
+            raise ValueError(
+                "expecting all variables to be bounded, but "
+                + str(x)
+                + " is not bounded"
+            )
+    elif both:
+        # There is at least one equation for x,
+        # so we can use it to substitute x in
+        # all other rows.
+        e = poly(both[0])
+        a = e.coeff_monomial(x)
+        e = e - (a * x).as_poly()
+        for row in lower + upper + both[1:]:
+            p = poly(row)
+            b = p.coeff_monomial(x)
+            p = (p - (b * x).as_poly()) * a
+            p = p + (-b * e)
+            result.append((row.func)(p.as_expr(), 0))  # type: ignore
+    else:
+        # Blow up exponentially!
+        for (loweri, upperi) in product(lower, upper):
+            print("Combining: " + str((loweri, upperi)))
+            (lp, up) = (poly(loweri), poly(upperi))
+            (lps, ups) = (
+                lp.mul_ground(abs(up.coeff_monomial(x))),
+                up.mul_ground(lp.coeff_monomial(x)),
+            )
+            result.append((combine_op(loweri, upperi))(lps.add(ups).as_expr(), 0))
+
+    if eliminate_unbounded:
+        result = remove_unbounded_list(result)
+
+    return simplify(closure(Ex, And(*result)))
