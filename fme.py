@@ -22,6 +22,10 @@ from bound import *
 import logging
 
 
+def simplify_prefer_lt(φ):
+    return simplify(φ, Lt)
+
+
 def applicable(φ: Formula) -> bool:
     """
     Assumes that φ is in prenex normal form.
@@ -61,7 +65,7 @@ def fme(φ: Formula, x, eliminate_unbounded: bool = True) -> Formula:
     if eliminate_unbounded:
         rows = remove_unbounded_list(rows)
         if not x in And(*rows).get_vars().free:
-            return simplify(closure(Ex, And(*rows)))
+            return simplify_prefer_lt(closure(Ex, And(*rows)))
 
     upper: list[BinaryAtomicFormula] = []
     lower: list[BinaryAtomicFormula] = []
@@ -73,7 +77,7 @@ def fme(φ: Formula, x, eliminate_unbounded: bool = True) -> Formula:
         if row.args[1] != 0:
             raise NotImplementedError("rhs must be zero")
         if isinstance(row, Ne) or isinstance(row, Gt) or isinstance(row, Ge):
-            raise NotImplementedError("cannot handle relation")
+            raise NotImplementedError("cannot handle relation " + str(row.func))
         if (
             not isinstance(row, Le)
             and not isinstance(row, Lt)
@@ -133,4 +137,4 @@ def fme(φ: Formula, x, eliminate_unbounded: bool = True) -> Formula:
     if eliminate_unbounded:
         result = remove_unbounded_list(result)
 
-    return simplify(closure(Ex, And(*result)))
+    return simplify_prefer_lt(closure(Ex, And(*result)))

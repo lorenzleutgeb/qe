@@ -36,7 +36,7 @@ import logging
 
 
 def exsimp(*conj: Formula) -> Formula:
-    return simplify(closure(Ex, And(*conj).to_nnf()))
+    return simplify(closure(Ex, And(*conj).to_nnf()), Lt)
 
 
 class FourierMotzkinTests(unittest.TestCase):
