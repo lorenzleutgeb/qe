@@ -24,7 +24,14 @@ from sympy.polys import Poly
 from sympy.polys.monomials import itermonomials
 from sympy.polys.orderings import monomial_key
 
-from itertools import combinations
+from typing import TypeGuard, TypeVar, Any
+
+
+α = TypeVar("α")
+
+
+def list_isinstance(xs: list[Any], τ: type[α]) -> TypeGuard[list[α]]:
+    return all(isinstance(x, τ) for x in xs)
 
 
 def encode(x) -> TruthValue:
@@ -63,7 +70,7 @@ def cmp(a, b) -> int | None:
 
 
 def merge(
-    op: type[AndOr], φ: BinaryAtomicFormula, ψ: BinaryAtomicFormula
+    op: type[And | Or], φ: BinaryAtomicFormula, ψ: BinaryAtomicFormula
 ) -> BinaryAtomicFormula | TruthValue | None:
     """
     >>> merge(And, Lt(x, 0), Lt(y, 0)) is None
@@ -224,7 +231,9 @@ def simplify(φ: Formula, prefer: type[Lt] | type[Gt] | None = None) -> Formula:
         def coeffs(p: Poly):
             return tuple([coeff_monomial(p, mon) for mon in mons])
 
-        return -cmp(coeffs(sp), coeffs(tp))  # type: ignore
+        result = cmp(coeffs(sp), coeffs(tp))
+        assert result is not None
+        return -result
 
     def formula_cmp(φ: Formula, ψ: Formula):
         if isinstance(φ, AtomicFormula) and isinstance(ψ, AtomicFormula):
@@ -304,7 +313,7 @@ def simplify(φ: Formula, prefer: type[Lt] | type[Gt] | None = None) -> Formula:
             if lhs.coeff_monomial(max_mon) < 0:
                 return φ.converse_func((-lhs).as_expr(), 0)
 
-        return φ.func(lhs.as_expr(), 0)  # type: ignore
+        return φ.func(lhs.as_expr(), 0)
 
     # φ = φ' → φ''
     elif isinstance(φ, Implies):
@@ -336,39 +345,47 @@ def simplify(φ: Formula, prefer: type[Lt] | type[Gt] | None = None) -> Formula:
     # φ = ψ₁ ○ … ○ ψₙ where ○ is ∧ or ∨
     elif isinstance(φ, AndOr):
         (id, dual) = (T, F) if isinstance(φ, And) else (F, T)
-        args = set(filter(lambda x: x is not id, map(rec, φ.args)))
+        args = list(set(filter(lambda x: x is not id, map(rec, φ.args))))
         if not args:
             return id
         if len(args) == 1:
-            return next(iter(args))
+            return args[0]
         elif dual in args:
             return dual
-        elif all([isinstance(x, BinaryAtomicFormula) for x in args]):  # type: ignore
-            # TODO: Replace this mess with something beautiful.
+        elif list_isinstance(args, BinaryAtomicFormula | None):
             changed = True
             while changed:
                 changed = False
-                for (a, b) in combinations(args, 2):
-                    m = merge(φ.func, a, b)  # type: ignore
-                    if m is None:
+                for i in range(len(args)):
+                    ai = args[i]
+                    if ai is None:
                         continue
-                    if m == a:
-                        args.remove(b)
-                        changed = True
-                    elif m == b:
-                        args.remove(a)
-                        changed = True
-                    elif m == id:
-                        args.remove(a)
-                        args.remove(b)
-                        changed = True
-                    elif m == dual:
-                        return dual
-                    elif m != a and m != b:
-                        args.remove(a)
-                        args.remove(b)
-                        args.add(m)
-                        changed = True
+                    for j in range(i + 1, len(args)):
+                        aj = args[j]
+                        if aj is None:
+                            continue
+                        merged = merge(φ.func, ai, aj)  # type: ignore
+                        if merged is None:
+                            continue
+                        elif isinstance(merged, TruthValue):
+                            if merged is dual:
+                                return dual
+                            else:
+                                args[i] = None
+                                args[j] = None
+                                changed = True
+                                break
+                        elif merged is aj:
+                            args[i] = None
+                            changed = True
+                            break
+                        elif merged is ai:
+                            args[j] = None
+                            changed = True
+                        else:
+                            args[i] = merged
+                            args[j] = None
+            args = filter(lambda x: x is not None, args)
         return φ.func(*sorted(args, key=cmp_to_key(formula_cmp)))  # type: ignore
 
     return φ
