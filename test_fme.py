@@ -1,33 +1,19 @@
-from functools import cmp_to_key
-from numbers import Real
-
 from logic1.atomlib.sympy import (
-    AtomicFormula,
-    BinaryAtomicFormula,
     Eq,
-    Ne,
-    Term,
     Gt,
     Lt,
     Ge,
     Le,
 )
-from logic1.firstorder.boolean import AndOr, And, Or, Not, Implies, Equivalent
+from logic1.firstorder.boolean import And
 from logic1.firstorder.formula import Formula
-from logic1.firstorder.quantified import QuantifiedFormula, All, Ex
-from logic1.firstorder.truth import T, F, TruthValue
+from logic1.firstorder.quantified import Ex
+from logic1.firstorder.truth import T, F
 
-from sympy import Expr as Term, Symbol as Variable, Add, Mul
 from sympy.abc import x, y, z
-from sympy.logic.boolalg import Boolean
-from sympy.polys import Poly
-from sympy.polys.domains import RR
-from sympy.polys.monomials import itermonomials
-from sympy.polys.orderings import lex, monomial_key
-from sympy.polys.rings import ring, PolyElement
 
 from simplify import simplify
-from fme import fme, remove_unbounded, bound
+from fme import fme
 from util import closure, matrix
 
 import unittest

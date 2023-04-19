@@ -1,14 +1,23 @@
 from logic1.firstorder.formula import Formula, And, Not, Or
+from logic1.firstorder.truth import TruthValue
 from logic1.firstorder.quantified import QuantifiedFormula, Ex, All
 from logic1.atomlib.sympy import AtomicFormula, BinaryAtomicFormula, Eq, Ne
 from sympy.abc import x, y
 from sympy.polys import Poly
 
 
+def size(φ: Formula) -> int:
+    if isinstance(φ, AtomicFormula):
+        return 1
+    elif isinstance(φ, TruthValue):
+        return 0
+    else:
+        return sum(map(size, φ.args))
+
+
 def closure(τ: type[QuantifiedFormula], φ: Formula) -> Formula:
-    xs = φ.get_vars().free
-    for x in xs:
-        φ = τ(x, φ)
+    for var in φ.get_vars().free:
+        φ = τ(var, φ)
     return φ
 
 

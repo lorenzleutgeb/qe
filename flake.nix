@@ -14,7 +14,8 @@
         pkgs = import nixpkgs { inherit system; };
         pyPkgs = pkgs.python310Packages;
 
-        pyeda = with pyPkgs; buildPythonPackage rec {
+        pyeda = with pyPkgs;
+          buildPythonPackage rec {
             pname = "pyeda";
             version = "0.28.0";
             doCheck = false;
@@ -24,7 +25,8 @@
             };
           };
 
-        logic1 = with pyPkgs; buildPythonPackage rec {
+        logic1 = with pyPkgs;
+          buildPythonPackage rec {
             pname = "logic1";
             version = "0.1";
             doCheck = false;
@@ -40,13 +42,14 @@
         devShell = pkgs.mkShell {
           buildInputs = with pyPkgs; [
             black
+            flake8
             pip
             mypy
             pytest
             jupyter
-	    sympy
-	    pyeda
-	    logic1
+            sympy
+            pyeda
+            logic1
           ];
           shellHook =
             "pip show logic1 pyeda sympy | grep -E 'Name|Version|Summary|Req|---'";

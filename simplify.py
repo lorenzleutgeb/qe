@@ -17,13 +17,12 @@ from logic1.firstorder.formula import Formula
 from logic1.firstorder.quantified import QuantifiedFormula, All, Ex
 from logic1.firstorder.truth import T, F, TruthValue
 
-from sympy import Expr as Term, Symbol as Variable, Add, Mul, true, false
+from sympy import Add, Mul, true, false
 from sympy.abc import x, y
 from sympy.logic.boolalg import Boolean, BooleanTrue, BooleanFalse
 from sympy.polys import Poly
-from sympy.polys.domains import RR
 from sympy.polys.monomials import itermonomials
-from sympy.polys.orderings import lex, monomial_key
+from sympy.polys.orderings import monomial_key
 
 from itertools import combinations
 
@@ -63,30 +62,6 @@ def cmp(a, b) -> int | None:
         return None
 
 
-def contradictory(φ: BinaryAtomicFormula, ψ: BinaryAtomicFormula) -> bool:
-    """
-    >>> contradictory(Eq(x, 1), Ne(x, 1))
-    True
-    >>> contradictory(Gt(x, 1), Le(x, 1))
-    True
-    >>> contradictory(Lt(x, 1), Ge(x, 1))
-    True
-    >>> contradictory(Lt(x, 1), Eq(x, 1))
-    True
-    >>> contradictory(Le(x, 1), Lt(x, 1))
-    False
-    """
-
-    if not φ.args == ψ.args:
-        return False
-    elif φ.func == ψ.complement_func:
-        return True
-    elif len({Gt, Lt, Eq}.intersection({φ.func, ψ.func})) == 2:
-        return True
-    else:
-        return False
-
-
 def merge(
     op: type[AndOr], φ: BinaryAtomicFormula, ψ: BinaryAtomicFormula
 ) -> BinaryAtomicFormula | TruthValue | None:
@@ -111,8 +86,11 @@ def merge(
         return φ
     elif φ.args != ψ.args:
         return None
-    elif contradictory(φ, ψ):
-        return T if op == Or else F
+    elif (
+        φ.func == ψ.complement_func
+        or len({Gt, Lt, Eq}.intersection({φ.func, ψ.func})) == 2
+    ):
+        return encode(op == Or)
 
     fs = (φ.func, ψ.func)
 
@@ -138,6 +116,8 @@ def merge(
 
 def simplify(φ: Formula, prefer: type[Lt] | type[Gt] | None = None) -> Formula:
     """
+    >>> simplify(Eq(x - 2, x - 2))
+    T
     >>> simplify(Ex(x, Equivalent(Or(Lt(x, 0), Eq(x, 0)), Le(x, 0))))
     T
     >>> simplify(Equivalent(Or(Lt(x, 1), Eq(x, 1)), Le(x, 1)))
@@ -278,21 +258,20 @@ def simplify(φ: Formula, prefer: type[Lt] | type[Gt] | None = None) -> Formula:
 
     # φ = s ○ t where ○ is one of >, ≥, <, ≤, =, ≠
     elif isinstance(φ, BinaryAtomicFormula):
-        (l, r) = φ.args
+        lhs = φ.args[0] - φ.args[1]
 
-        if isinstance(l, Real) and isinstance(r, Real):
-            result = φ.sympy_func(l, r)
+        if lhs.is_zero:
+            lhs = 0
+
+        if isinstance(lhs, Real):
+            result = φ.sympy_func(lhs, 0)
             if isinstance(result, Boolean):
                 return encode(result)
             else:
                 raise NotImplementedError("expected comparison relation to evaluate")
 
-        l = (l - r).as_poly()
-
-        if l is None:
-            raise NotImplementedError("expected to get a polynomial")
-
-        l = (l / l.content()).as_poly()
+        lhs = lhs.as_poly()  # type: ignore
+        lhs = (lhs / lhs.content()).as_poly()
 
         # This type guard is necessary since there is no BinaryAtomicFormula.converse_func
         if not (
@@ -308,31 +287,28 @@ def simplify(φ: Formula, prefer: type[Lt] | type[Gt] | None = None) -> Formula:
         if ((isinstance(φ, Gt) or isinstance(φ, Ge)) and prefer is Lt) or (
             (isinstance(φ, Lt) or isinstance(φ, Le)) and prefer is Gt
         ):
-            return φ.converse_func((-l).as_expr(), 0)
+            return φ.converse_func((-lhs).as_expr(), 0)
         elif not prefer or (isinstance(φ, Eq) or isinstance(φ, Ne)):
-            symbols = sorted(l.free_symbols, key=lambda x: x.sort_key())
+            symbols = sorted(lhs.free_symbols, key=lambda x: x.sort_key())
             max_mon = next(
                 filter(
-                    l.coeff_monomial,
+                    lhs.coeff_monomial,
                     sorted(
-                        itermonomials(symbols, l.degree()),
+                        itermonomials(symbols, lhs.degree()),
                         key=monomial_key("lex", symbols),
                         reverse=True,
                     ),
                 )
             )
 
-            if l.coeff_monomial(max_mon) < 0:
-                if isinstance(φ, Eq) or isinstance(φ, Ne):
-                    return φ.func((-l).as_expr(), 0)
-                else:
-                    return φ.converse_func((-l).as_expr(), 0)
+            if lhs.coeff_monomial(max_mon) < 0:
+                return φ.converse_func((-lhs).as_expr(), 0)
 
-        return φ.func(l.as_expr(), 0)  # type: ignore
+        return φ.func(lhs.as_expr(), 0)  # type: ignore
 
     # φ = φ' → φ''
     elif isinstance(φ, Implies):
-        return rec(And(implies(*φ.args)))
+        return rec(implies(*φ.args))
 
     # φ = φ' ↔ φ''
     elif isinstance(φ, Equivalent):
@@ -340,8 +316,8 @@ def simplify(φ: Formula, prefer: type[Lt] | type[Gt] | None = None) -> Formula:
 
     # φ = ○x.ψ where ○ is ∀ or ∃
     elif isinstance(φ, QuantifiedFormula):
-        (x, ψ) = (φ.var, rec(φ.arg))
-        return ψ if x not in ψ.get_vars().free else φ.func(x, ψ)
+        ψ = rec(φ.arg)
+        return ψ if φ.var not in ψ.get_vars().free else φ.func(φ.var, ψ)
 
     # φ = ¬ψ
     elif isinstance(φ, Not):
@@ -355,7 +331,7 @@ def simplify(φ: Formula, prefer: type[Lt] | type[Gt] | None = None) -> Formula:
             # Push negation down into atomic formula.
             return rec(ψ.complement_func(*ψ.args))
         else:
-            raise NotImplemented("unreachable")
+            raise NotImplementedError("unreachable")
 
     # φ = ψ₁ ○ … ○ ψₙ where ○ is ∧ or ∨
     elif isinstance(φ, AndOr):
@@ -374,7 +350,7 @@ def simplify(φ: Formula, prefer: type[Lt] | type[Gt] | None = None) -> Formula:
                 changed = False
                 for (a, b) in combinations(args, 2):
                     m = merge(φ.func, a, b)  # type: ignore
-                    if m == None:
+                    if m is None:
                         continue
                     if m == a:
                         args.remove(b)
