@@ -40,14 +40,15 @@
 
       in rec {
         devShell = pkgs.mkShell {
-          buildInputs = with pyPkgs; [
-            pkgs.autoflake
+          buildInputs = with pyPkgs; with pkgs; [
+            autoflake
             black
             flake8
             pip
             mypy
             pytest
             jupyter
+            ruff
             sympy
             pyeda
             logic1

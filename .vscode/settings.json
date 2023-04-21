@@ -19,5 +19,10 @@
 	"flake8.args": [
 		"--doctests",
 		"--max-line-length=120"
-	]
+	],
+	"[python]": {
+		"editor.codeActionsOnSave": {
+			"source.organizeImports": true
+		}
+	},
 }

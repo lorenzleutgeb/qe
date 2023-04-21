@@ -1,20 +1,12 @@
-from logic1.firstorder.formula import Formula, And, Or, Not
-from logic1.firstorder.quantified import All, Ex, QuantifiedFormula
+from logic1.firstorder.formula import Formula, And
+from logic1.firstorder.quantified import Ex
 from logic1.atomlib.sympy import (
-    AtomicFormula,
     BinaryAtomicFormula,
     Eq,
-    Ne,
-    Term,
-    Gt,
-    Lt,
-    Ge,
     Le,
+    Lt,
 )
 from simplify import simplify
-from sympy.polys import Poly
-
-from itertools import product
 
 from util import closure, conjunctive_core
 from rings import poly

@@ -1,0 +1,29 @@
+name: build
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: install
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff pytest sympy pyeda
+          VERSION=0.1.1
+          curl -H 'Cookie: accept=true' -O "https://people.mpi-inf.mpg.de/~sturm/teaching/143421/logic1/logic1-$VERSION-py3-none-any.whl"
+          pip install logic1-$VERSION-py3-none-any.whl
+          rm logic1-$VERSION-py3-none-any.whl
+      - name: lint
+        run: |
+          # stop the build if there are Python syntax errors or undefined names
+          ruff --format=github --select=E9,F63,F7,F82 --target-version=py311 .
+          # default set of ruff rules with GitHub Annotations
+          ruff --format=github --target-version=py311 .
+      - name: test
+        run: |
+          pytest --doctest-modules

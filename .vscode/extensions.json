@@ -2,6 +2,7 @@
 	"recommendations": [
 		"mkhl.direnv",
 		"ms-python.black-formatter",
+		"ms-python.isort",
 		"ms-python.python",
 		"ms-python.vscode-pylance",
 		"ms-python.flake8",
