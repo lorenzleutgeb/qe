@@ -41,6 +41,7 @@
       in rec {
         devShell = pkgs.mkShell {
           buildInputs = with pyPkgs; [
+            pkgs.autoflake
             black
             flake8
             pip

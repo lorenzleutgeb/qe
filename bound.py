@@ -16,7 +16,8 @@ from sympy.polys import Poly
 
 from itertools import product
 
-from util import *
+from util import closure, conjunctive_core
+from rings import poly
 
 import logging
 

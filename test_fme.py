@@ -12,7 +12,7 @@ from logic1.firstorder.truth import T, F
 
 from sympy.abc import x, y, z
 
-from simplify import simplify
+from rings import make_simplify
 from fme import fme
 from util import closure, matrix
 
@@ -21,8 +21,11 @@ import unittest
 import logging
 
 
+simplify_lt = make_simplify(Lt)
+
+
 def exsimp(*conj: Formula) -> Formula:
-    return simplify(closure(Ex, And(*conj).to_nnf()), Lt)
+    return simplify_lt(closure(Ex, And(*conj).to_nnf()))
 
 
 class FourierMotzkinTests(unittest.TestCase):

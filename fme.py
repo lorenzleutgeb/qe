@@ -1,29 +1,25 @@
-from logic1.firstorder.formula import Formula, And, Or, Not
-from logic1.firstorder.quantified import All, Ex, QuantifiedFormula
+from logic1.firstorder.formula import Formula, And
+from logic1.firstorder.quantified import Ex
 from logic1.atomlib.sympy import (
-    AtomicFormula,
     BinaryAtomicFormula,
     Eq,
     Ne,
-    Term,
     Gt,
     Lt,
     Ge,
     Le,
 )
-from simplify import simplify
-from sympy.polys import Poly
 
 from itertools import product
 
-from util import *
-from bound import *
+from util import no_alternations, is_conjunctive, conjunctive_core, closure
+from bound import remove_unbounded_list, bound, Bound
+from rings import poly, make_simplify
 
 import logging
 
 
-def simplify_prefer_lt(φ):
-    return simplify(φ, Lt)
+simplify_prefer_lt = make_simplify(prefer=Lt)
 
 
 def applicable(φ: Formula) -> bool:
@@ -57,14 +53,15 @@ def fme(φ: Formula, x, eliminate_unbounded: bool = True) -> Formula:
     """
     Assumes that φ is in prenex normal form and in conjunctive normal form.
     """
-    if not x in φ.get_qvars():
+    if x not in φ.get_qvars():
         return φ
 
     rows = conjunctive_core(φ)
 
     if eliminate_unbounded:
         rows = remove_unbounded_list(rows)
-        if not x in And(*rows).get_vars().free:
+        if not any([x in row.get_vars().free for row in rows]):
+            # x was eliminated because it was not bounded.
             return simplify_prefer_lt(closure(Ex, And(*rows)))
 
     upper: list[BinaryAtomicFormula] = []

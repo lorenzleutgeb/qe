@@ -1,9 +1,7 @@
 from logic1.firstorder.formula import Formula, And, Not, Or
-from logic1.firstorder.truth import TruthValue
-from logic1.firstorder.quantified import QuantifiedFormula, Ex, All
-from logic1.atomlib.sympy import AtomicFormula, BinaryAtomicFormula, Eq, Ne
-from sympy.abc import x, y
-from sympy.polys import Poly
+from logic1.firstorder.truth import TruthValue, T, F
+from logic1.firstorder.quantified import QuantifiedFormula
+from logic1.atomlib.sympy import AtomicFormula
 
 
 def size(φ: Formula) -> int:
@@ -28,13 +26,15 @@ def no_alternations(τ: type, φ: Formula) -> bool:
     Returns true if all quantifiers in the prefix of φ are
     of type τ.
 
-    >>> no_alternations(Ex, Ex(x, Ex(y, Eq(x, y))))
+    >>> from logic1.firstorder.quantified import Ex, All
+    >>> from sympy.abc import x, y
+    >>> no_alternations(Ex, Ex(x, Ex(y, T)))
     True
-    >>> no_alternations(Ex, All(x, Ex(y, Eq(x, y))))
+    >>> no_alternations(Ex, All(x, Ex(y, T)))
     False
-    >>> no_alternations(All, All(x, All(y, Eq(x, y))))
+    >>> no_alternations(All, All(x, All(y, T)))
     True
-    >>> no_alternations(Ex, All(x, All(y, Eq(x, y))))
+    >>> no_alternations(Ex, All(x, All(y, T)))
     False
     """
     return not isinstance(φ, QuantifiedFormula) or (
@@ -46,14 +46,16 @@ def is_conjunctive(φ: Formula) -> bool:
     """
     Assumes that φ is in prenex normal form.
 
-    >>> is_conjunctive(Ex(x, Eq(x, x)))
+    >>> from logic1.firstorder.quantified import Ex
+    >>> from sympy.abc import x
+    >>> is_conjunctive(Ex(x, T))
     True
-    >>> is_conjunctive(Ex(x, Or(Eq(x, x), Ne(x, x))))
+    >>> is_conjunctive(Ex(x, Or(T, T)))
     False
-    >>> is_conjunctive(Ex(x, And(Eq(x, x), Ne(x, x))))
+    >>> is_conjunctive(Ex(x, And(T, T)))
     True
     """
-    if isinstance(φ, AtomicFormula):
+    if isinstance(φ, AtomicFormula | TruthValue):
         return True
     elif isinstance(φ, QuantifiedFormula):
         return is_conjunctive(matrix(φ))
@@ -85,8 +87,47 @@ def conjunctive_core(φ: Formula) -> list[Formula]:
     return list(φ.args) if isinstance(φ, And) else [φ]
 
 
-def poly(φ: BinaryAtomicFormula) -> Poly:
-    result = φ.args[0].as_poly()
-    if not result:
-        raise NotImplementedError()
-    return result
+def encode(x) -> TruthValue:
+    """
+    >>> encode(True)
+    T
+    >>> encode(False)
+    F
+    >>> encode([])
+    F
+    >>> encode(0)
+    F
+    >>> encode(1)
+    T
+    """
+    return T if x else F
+
+
+def cmp(a, b) -> int:
+    if a < b:
+        return -1
+    elif a > b:
+        return 1
+    elif a == b:
+        return 0
+    else:
+        raise ValueError(
+            "ordering for " + str(type(a)) + " " + str(type(b)) + " is not total"
+        )
+
+
+def inv_not(φ: Formula) -> Formula:
+    """
+    Returns a formula equivalent to ¬φ, exploiting the fact
+    that ¬ is involutive (φ ≡ ¬¬φ), i.e. the result of applying this
+    function to ¬ψ will not be ¬¬ψ but rather ψ.
+    """
+    return φ.arg if isinstance(φ, Not) else Not(φ)
+
+
+def implies(φ: Formula, ψ: Formula) -> Or:
+    """
+    Given φ and ψ, returns a formula equivalent to ¬φ ∨ ψ,
+    which in turn is equivalent to the implication φ → ψ.
+    """
+    return Or(inv_not(φ), ψ)
