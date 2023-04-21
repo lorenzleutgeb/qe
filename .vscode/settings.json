@@ -1,3 +1,23 @@
 {
-	"python.analysis.typeCheckingMode": "basic"
+	"files.exclude": {
+		"__pycache__": true,
+		".pytest_cache": true,
+		"**/.git": true,
+		"**/.svn": true,
+		"**/.hg": true,
+		"**/CVS": true,
+		"**/.DS_Store": true,
+		"**/Thumbs.db": true
+	},
+	"python.analysis.typeCheckingMode": "basic",
+	"python.testing.pytestEnabled": true,
+	"python.testing.pytestArgs": [
+		"--doctest-modules", 
+		"--doctest-report", "ndiff",
+	],
+	"python.testing.unittestEnabled": false,
+	"flake8.args": [
+		"--doctests",
+		"--max-line-length=120"
+	]
 }
