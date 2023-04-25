@@ -1,3 +1,5 @@
+# This file is template, which is not functional code yet.
+
 from abc import ABC, abstractmethod
 import logging
 from time import time
@@ -12,51 +14,56 @@ Variable = Any
 
 
 class FoundT(Exception):
-    # Signals that we have found T as an elimination result of 1-primitive
-    # formula. At that point we know that the overall QE result is T or F,
-    # and we can stop.
-    pass
+    # Signals that we have found T as an elimination result of a 1-primitive
+    # formula. At that point we know that the overall QE result is T or F, and
+    # we can stop.
+    pass  # There is nothing to do here
 
 
 class QuantifierElimination(ABC):
 
     class Pool(list):
+        # Compare comments on self.pool in __init__.
         def __init__(self, vars_: list[Variable], f: Formula) -> None:
             self.push(vars_, f)
 
         def push(self, vars_: list[Variable], f: Formula) -> None:
-            # Compute a DNF of formula. Combine each conjunction in the DNF
-            # with vars_ and push it into the pool. Take care of T (exception)
+            # Compute a DNF of formula. Pair each conjunction in the DNF with
+            # vars_ and push it to the Pool. Take care of T (raise exception)
             # and F (ignore)
-            ...
+            ...  # write!
 
     def __init__(self, blocks=None, matrix=None, negated=None, pool=None,
                  finished=None) -> None:
+        #  __init__ is typically called without arguments so that everything is
+        #  initialized with None.
 
         # A quantifier block is a pair (quantifier Symbol, list of variables).
-        # blocks holds a list of quantifier Blocks.
+        # self.blocks holds a list of quantifier Blocks.
         self.blocks = blocks
 
-        # matrix holds a quantifier-free formula.
+        # self.matrix holds a quantifier-free formula.
         self.matrix = matrix
 
-        # blocks and matrix will be initialized with the PNF of the input
-        # formula. Then elimination proceeds block-wise.
+        # self.blocks and self.matrix will be initialized with the PNF of the
+        # input formula later on. Then elimination proceeds block-wise.
 
-        # negated is bool. It is T if the Ex-block currently processed below
-        # originally was an All-block
+        # self.negated is bool. It is T when the list of primitive formulas
+        # processed in self.pool below, originates from an All-block.
         self.negated = negated
 
-        # pool is a Pool (subclass of list, s.a.) of pairs (list of variables,
-        # conjunction of literals). Each pair establishes a subproblem, where
-        # the variables are considered existentially quantified.
+        # self.pool is a Pool (subclass of list, s.a.) of pairs (list of
+        # variables, conjunction of literals). Each pair represents a primitive
+        # formula, which establishes a subproblem that we call "job".
         self.pool = pool
 
-        # finished is a list of quantifier free formulas. Those are formulas
-        # from the pool where all variables have been eliminated.
+        # finished is a list of quantifier free formulas. Those are subproblems
+        # from self.pool where all variables have been eliminated.
         self.finished = finished
 
     def qe(self, f: Formula) -> Formula:
+        # This is the main loop for QE. It is literally the code that I am
+        # using, but feel free to adapt to your needs.
         logging._startTime = time()
         self.setup(f)
         while self.blocks:
@@ -71,41 +78,56 @@ class QuantifierElimination(ABC):
 
     def setup(self, f: Formula) -> None:
         # Compute a PNF of f, and populate self.blocks and self.matrix.
-        ...
+        ...  # write!
         logging.info(f'{self.setup.__qualname__}: {self}')
 
     def pop_block(self) -> None:
         # Remove the innermost block from self.blocks.
-        # Set negated to T or F depending on the quantifier symbol of innermost block.
-        # Push(innermost block, self.matrix) into the pool.
+        #
+        # Set self.negated to either T or F, depending on the quantifier symbol
+        # of innermost block.
+        #
+        # Push (innermost block, self.matrix) into the pool.
+        #
         # Set self.matrix to None
         ...
 
     def process_pool(self) -> None:
         while self.pool:
-            # Pop a pair (variables, f)
-            # Select a variable v from variables
-            # Apply self.qe1p(v, f)
-            # If v was the last variable, then push the result to self.finished
-            # Else push back to the pool with the remaining variables
-            ...
+            # Pop a job (variables, f) from self.pool.
+            #
+            # Pop a variable v from variables (variables become variables')
+            #
+            # Apply self.qe1p(v, f) with result f'
+            #
+            # If v was the last variable, then push f' to self.finished
+            #
+            # Else push (variables', f') to self.pool
+            ...  # write!
             logging.info(f'{self.process_pool.__qualname__}: {self}')
 
     @abstractmethod
     def qe1p(self, v: Variable, f: Formula) -> Formula:
-        # This is implemented elsewhere in a subclass of this class. Those
-        # '...' are should remain.
-        ...
+        # This is implemented in a subclass of this class within  a "theories"
+        # module.
+        ...  # These dots are supposed to remain here
 
     def collect_finished(self) -> None:
         # Convert the list self.finished to a disjunction D
+        #
         # Negate D if self.negated is T
+        #
         # Set self.matrix to D
-        # self.pool, self.finished, and self.negated become None
-        ...
+        #
+        # Set self.pool, self.finished, and self.negated to None
+        ...  # write
         logging.info(f'{self.collect_finished.__qualname__}: {self}')
 
     def __repr__(self):
+        # As usual, this prints the current state in format so that it can be
+        # used as input. It is not really need at present, and direct use of
+        # input is not possible, because the class is abstract. It is still
+        # good to have it as a rawer alternative to __str__ below.
         return (f'QuantifierElimination(blocks={self.blocks!r}, '
                 f'matrix={self.matrix!r}, '
                 f'negated={self.negated!r}, '
@@ -113,6 +135,8 @@ class QuantifierElimination(ABC):
                 f'finished={self.finished!r})')
 
     def __str__(self):
+        # This is my fancy printing of the current state for logging purposes.
+        # Feel free to adapt to your needs.
         if self.blocks is not None:
             _h = [q.__qualname__ + ' ' + str(v) for q, v in self.blocks]
             _h = '  '.join(_h)

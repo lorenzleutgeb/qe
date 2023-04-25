@@ -2,12 +2,12 @@ import logging
 
 import sympy
 
-from logic1 import abc
 from logic1 import atomlib
-# from logic1.atomlib.sympy import Eq, Ne
 from logic1.firstorder.boolean import Or, T, F
 from logic1.firstorder.formula import Formula
 from logic1.support.decorators import classproperty
+
+from qe import abc
 
 
 logging.basicConfig(
@@ -22,18 +22,22 @@ def show_progress(flag: bool = True) -> None:
         logging.getLogger().setLevel(logging.CRITICAL)
 
 
-Term = sympy.Symbol
+Term = sympy.Expr
 Variable = sympy.Symbol
 
 
 _modulus = None
 
 
-def setmod(m: int) -> int:
+def mod() -> int:
+    return _modulus
+
+
+def set_mod(modulus: int) -> int:
     global _modulus
-    _tmp = _modulus
-    _modulus = m
-    return _tmp
+    save_modulus = _modulus
+    _modulus = modulus
+    return save_modulus
 
 
 class Eq(atomlib.sympy.Eq):
@@ -91,18 +95,14 @@ class QuantifierElimination(abc.qe.QuantifierElimination):
     # Instance methods
     def __call__(self, f, modulus: int = None):
         if modulus is not None:
-            save_modulus = setmod(modulus)
+            save_modulus = set_mod(modulus)
             result = self.qe(f)
-            setmod(save_modulus)
+            set_mod(save_modulus)
             return result
         return self.qe(f)
 
     def qe1p(self, v: Variable, f: Formula) -> Formula:
-        return Or(*(f.subs({v: i}) for i in range(_modulus)))
-
-    @staticmethod
-    def is_valid_atom(f: Formula) -> bool:
-        return isinstance(f, (Eq, Ne))
+        return Or(*(f.subs({v: i}) for i in range(_modulus))).simplify()
 
 
 qe = quantifier_elimination = QuantifierElimination()
