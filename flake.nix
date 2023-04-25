@@ -28,12 +28,12 @@
         logic1 = with pyPkgs;
           buildPythonPackage rec {
             pname = "logic1";
-            version = "0.1";
+            version = "0.1.1";
             doCheck = false;
             format = "wheel";
             src = pkgs.requireFile {
               url = "${base}/${pname}/${pname}-${version}-py3-none-any.whl";
-              sha256 = "0l7ai7mc805ay2kxd380pl0zv40ndday15n252q9r1khh3f625by";
+              sha256 = "1piccy7y9ghlmk0qhb3hvlj1qnjy0vk2jd22ng27lss4h7vm22sd";
             };
             buildInputs = [ pyeda sympy typing-extensions ];
           };
