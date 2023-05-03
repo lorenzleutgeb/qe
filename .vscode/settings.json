@@ -29,4 +29,5 @@
 	},
 	"python.linting.flake8Enabled": true,
 	"python.linting.enabled": true,
+	"notebook.output.textLineLimit": 120,
 }
