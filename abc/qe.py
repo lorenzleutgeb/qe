@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from time import time
-from typing import Any, Callable, Optional
+from typing import Callable, Generic, Optional, TypeVar
 
 from logic1.firstorder import AtomicFormula, BooleanFormula
 from logic1.firstorder.boolean import And, Not, Or
@@ -11,7 +11,9 @@ from logic1.firstorder.truth import F, T
 
 from ..util import matrix
 
-Variable = Any
+α = TypeVar('α', bound=int)
+
+Matrix = BooleanFormula | AtomicFormula
 
 logger = logging.getLogger("qe")
 logger.propagate = False
@@ -22,40 +24,7 @@ streamHandler.setFormatter(
 logger.addHandler(streamHandler)
 
 
-class FoundT(Exception):
-    # Signals that we have found T as an elimination result of a 1-primitive
-    # formula. At that point we know that the overall QE result is T or F, and
-    # we can stop.
-    pass  # There is nothing to do here
-
-
-class QuantifierElimination(ABC):
-    class Pool(list):
-        # Compare comments on self.pool in __init__.
-        def __init__(
-            self, vars_: list[Variable], f: BooleanFormula | AtomicFormula
-        ) -> None:
-            self.push(vars_, f)
-
-        def push(
-            self, vars_: list[Variable], f: BooleanFormula | AtomicFormula
-        ) -> None:
-            assert isinstance(f, BooleanFormula | AtomicFormula)
-            dnf = f.to_dnf()
-
-            if isinstance(dnf, And | AtomicFormula):
-                super().append((vars_, dnf))
-            elif dnf is F:
-                return
-            elif dnf is T:
-                raise FoundT()
-            elif isinstance(dnf, Or):
-                super().extend([(vars_.copy(), f) for f in dnf.args])
-            else:
-                raise NotImplementedError(
-                    "dnf is strange: " + str(dnf) + " " + str(type(dnf))
-                )
-
+class QuantifierElimination(ABC, Generic[α]):
     def __init__(
         self,
         simplify: Callable[[Formula], Formula],
@@ -70,10 +39,10 @@ class QuantifierElimination(ABC):
 
         # A quantifier block is a pair (quantifier Symbol, list of variables).
         # self.blocks holds a list of quantifier Blocks.
-        self.blocks: Optional[list[tuple[type[QuantifiedFormula], list[Variable]]]] = []
+        self.blocks: Optional[list[tuple[type[QuantifiedFormula], list[α]]]] = blocks
 
         # self.matrix holds a quantifier-free formula.
-        self.matrix: Optional[BooleanFormula | AtomicFormula] = matrix
+        self.matrix: Optional[Matrix] = matrix
 
         # self.blocks and self.matrix will be initialized with the PNF of the
         # input formula later on. Then elimination proceeds block-wise.
@@ -85,7 +54,7 @@ class QuantifierElimination(ABC):
         # self.pool is a Pool (subclass of list, s.a.) of pairs (list of
         # variables, conjunction of literals). Each pair represents a primitive
         # formula, which establishes a subproblem that we call "job".
-        self.pool: Optional[QuantifierElimination.Pool] = pool
+        self.pool: Optional[list[tuple[list[α], Matrix]]] = pool
 
         # finished is a list of quantifier free formulas. Those are subproblems
         # from self.pool where all variables have been eliminated.
@@ -93,19 +62,40 @@ class QuantifierElimination(ABC):
 
         self.simplify: Callable[[Formula], Formula] = simplify
 
+    def push_to_pool(
+        self, vars_: list[α], f: Matrix
+    ) -> Optional[tuple[()]]:
+        if self.pool is None:
+            self.pool = []
+
+        dnf = f.to_dnf()
+
+        if isinstance(dnf, And | AtomicFormula):
+            self.pool.append((vars_, dnf))
+        elif dnf is F:
+            return
+        elif dnf is T:
+            return ()
+        elif isinstance(dnf, Or):
+            self.pool.extend([(vars_.copy(), f) for f in dnf.args])  # type: ignore
+        else:
+            raise NotImplementedError(
+                "dnf is strange: " + str(dnf) + " " + str(type(dnf))
+            )
+
+    def true(self):
+        self.pool = None
+        self.finished = [T]
+
     def qe(self, f: Formula) -> Formula:
         f = self.simplify(f)
-        # This is the main loop for QE. It is literally the code that I am
-        # using, but feel free to adapt to your needs.
         logging._startTime = time()  # type: ignore
         self.setup(f)
         while self.blocks:
-            try:
-                self.pop_block()
-                self.process_pool()
-            except FoundT:
-                self.pool = None
-                self.finished = [T]
+            if self.pop_block() == ():
+                self.true()
+            elif self.process_pool() == ():
+                self.true()
             self.collect_finished()
 
         assert self.matrix is not None
@@ -117,7 +107,7 @@ class QuantifierElimination(ABC):
         if not self.blocks:
             self.blocks = []
             q: Optional[type[QuantifiedFormula]] = None
-            xs: list[Variable] = []
+            xs: list[α] = []
             fp = f
             while isinstance(fp, QuantifiedFormula):
                 if q == fp.func:
@@ -135,7 +125,7 @@ class QuantifierElimination(ABC):
 
         logger.info(f"{self.setup.__qualname__}: {self}")
 
-    def pop_block(self) -> None:
+    def pop_block(self) -> Optional[tuple[()]]:
         assert self.blocks is not None
         assert self.matrix is not None
 
@@ -149,7 +139,8 @@ class QuantifierElimination(ABC):
         if self.negated:
             self.matrix = Not(self.matrix)
 
-        self.pool = QuantifierElimination.Pool(x, self.matrix)
+        if self.push_to_pool(x, self.matrix) == ():
+            return ()
 
         self.matrix = None
         self.finished = []
@@ -164,14 +155,14 @@ class QuantifierElimination(ABC):
             if not variables:
                 self.finished.append(f)
             else:
-                self.pool.push(variables, f)
+                self.push_to_pool(variables, f)
 
             logger.info(f"{self.process_pool.__qualname__}: {self}")
 
     @abstractmethod
     def qe1p(
-        self, v: Variable, f: BooleanFormula | AtomicFormula
-    ) -> BooleanFormula | AtomicFormula:
+        self, v: α, f: Matrix
+    ) -> Matrix:
         # This is implemented in a subclass of this class within  a "theories"
         # module.
         ...
@@ -210,13 +201,13 @@ class QuantifierElimination(ABC):
             blocks = f"[{_h}]"
         else:
             blocks = None
-        if self.negated is None:
-            read_as = ""
+        if self.negated is True:
+            read_as = "  # read as Not All"
         elif self.negated is False:
             read_as = "  # read as Ex"
         else:
-            assert self.negated is True
-            read_as = "  # read as Not All"
+            assert self.negated is None
+            read_as = ""
         if self.pool is not None:
             _h = [f"({str(job[0])}, {str(job[1])})" for job in self.pool]
             _h = ",\n                ".join(_h)
