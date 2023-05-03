@@ -48,12 +48,12 @@ def make_simplify_atom(modulus: Optional[int] = None):
 
 
 class QuantifierElimination(Base[Symbol]):
-    """Quantifier elimination
-
-    """
+    """Quantifier elimination"""
 
     def __init__(self, modulus: Optional[int] = None):
-        super().__init__(make_simplify(atom=make_simplify_atom(modulus=modulus), cmp=cmp))
+        super().__init__(
+            make_simplify(atom=make_simplify_atom(modulus=modulus), cmp=cmp)
+        )
         self.modulus = modulus
 
     def __call__(self, f):

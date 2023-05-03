@@ -11,7 +11,7 @@ from logic1.firstorder.truth import F, T
 
 from ..util import matrix
 
-α = TypeVar('α', bound=int)
+α = TypeVar("α", bound=int)
 
 Matrix = BooleanFormula | AtomicFormula
 
@@ -62,9 +62,7 @@ class QuantifierElimination(ABC, Generic[α]):
 
         self.simplify: Callable[[Formula], Formula] = simplify
 
-    def push_to_pool(
-        self, vars_: list[α], f: Matrix
-    ) -> Optional[tuple[()]]:
+    def push_to_pool(self, vars_: list[α], f: Matrix) -> Optional[tuple[()]]:
         if self.pool is None:
             self.pool = []
 
@@ -160,9 +158,7 @@ class QuantifierElimination(ABC, Generic[α]):
             logger.info(f"{self.process_pool.__qualname__}: {self}")
 
     @abstractmethod
-    def qe1p(
-        self, v: α, f: Matrix
-    ) -> Matrix:
+    def qe1p(self, v: α, f: Matrix) -> Matrix:
         # This is implemented in a subclass of this class within  a "theories"
         # module.
         ...

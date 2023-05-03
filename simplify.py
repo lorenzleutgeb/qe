@@ -30,7 +30,7 @@ class Merge(Enum):
 
     def __str__(self) -> str:
         return "L" if self is Merge.L else "R"
-    
+
     def __repr__(self) -> str:
         return self.__str__()
 
