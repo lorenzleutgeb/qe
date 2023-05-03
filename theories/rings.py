@@ -5,10 +5,6 @@
 >>> from sympy.abc import x, y
 >>> simplify(Eq(x - 2, x - 2))
 T
->>> simplify(Ex(x, Equivalent(Or(Lt(x, 0), Eq(x, 0)), Le(x, 0))))
-T
->>> simplify(Equivalent(Or(Lt(x, 1), Eq(x, 1)), Le(x, 1)))
-T
 >>> simplify(And(Ge(x, 0), Ne(x, 0)))
 Gt(x, 0)
 >>> simplify(Not(Le(x - 1, 0)))
@@ -63,36 +59,32 @@ Le(x - 1, 0)
 Lt(x - 1, 0)
 >>> simplify(Or(Ge(x, 1), Le(x, 1)))
 T
+
+Bugs:
+
+>> simplify(Equivalent(Or(Lt(x, 1), Eq(x, 1)), Le(x, 1)))
+T
+>> simplify(Ex(x, Equivalent(Or(Lt(x, 0), Eq(x, 0)), Le(x, 0))))
+T
 """
 
 
+from functools import partial
 from numbers import Real
+from typing import Callable, Optional
 
-from logic1.atomlib.sympy import (
-    BinaryAtomicFormula,
-    Eq,
-    Ne,
-    Gt,
-    Lt,
-    Ge,
-    Le,
-)
+from logic1.atomlib.sympy import BinaryAtomicFormula, Eq, Ge, Gt, Le, Lt, Ne
 from logic1.firstorder.boolean import And, Or
 from logic1.firstorder.formula import Formula
-from logic1.firstorder.truth import T, TruthValue
-
+from logic1.firstorder.truth import F, T, TruthValue
 from sympy.logic.boolalg import Boolean
 from sympy.polys import Poly
 from sympy.polys.monomials import itermonomials
 from sympy.polys.orderings import monomial_key
 
-from typing import Callable, Optional
-
-from util import encode, cmp
-
-from functools import partial
-
-from simplify import Merge, make_simplify as make_formula_simplify
+from ..simplify import Merge
+from ..simplify import make_simplify as make_formula_simplify
+from ..util import cmp, encode
 
 KnownRelation = Lt | Le | Gt | Ge | Eq | Ne
 
@@ -122,22 +114,33 @@ def merge(
     >>> merge(And, Eq(y**3, 0), Eq(x**2, 0)) is None
     True
     >>> merge(Or, Gt(x, 1), Lt(x, 1))
-    T
+    Ne(x, 1)
+    >>> merge(And, Gt(x, 1), Lt(x, 1))
+    F
     >>> merge(Or, Ge(x, 1), Le(x, 1))
     T
+    >>> merge(Or, Lt(x, 1), Eq(x, 1))
+    Le(x, 1)
     """
+    fs = (φ.func, ψ.func)
 
     if φ == ψ:
         return φ
     elif φ.args != ψ.args:
         return None
-    elif (
-        φ.func == ψ.complement_func
-        or len({Gt, Lt, Eq}.intersection({φ.func, ψ.func})) == 2
-    ):
+    elif φ.func == ψ.complement_func:
         return encode(op == Or)
-
-    fs = (φ.func, ψ.func)
+    elif op is And and len({Gt, Lt, Eq}.intersection({φ.func, ψ.func})) == 2:
+        return F
+    elif op is Or:
+        if fs == (Gt, Eq):
+            return Ge(*φ.args)
+        elif fs == (Lt, Eq):
+            return Le(*φ.args)
+        elif fs == (Eq, Gt):
+            return Ge(*φ.args)
+        elif fs == (Eq, Lt):
+            return Le(*φ.args)
 
     if fs == (Gt, Ge) or fs == (Lt, Le) or fs == (Eq, Ge) or fs == (Eq, Le):
         return φ if op is And else ψ
@@ -154,7 +157,7 @@ def merge(
     elif fs == (Ge, Le) or fs == (Le, Ge):
         return Eq(*φ.args) if op is And else T
     elif fs == (Gt, Lt) or fs == (Lt, Gt):
-        return Ne(*φ.args) if op is And else None
+        return F if op is And else Ne(*φ.args)
     else:
         return None
 

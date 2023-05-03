@@ -1,20 +1,15 @@
+import logging
+from enum import Enum
 from functools import cmp_to_key, partial
+from typing import Any, Callable, Optional, TypeGuard, TypeVar
 
-from logic1.atomlib.sympy import (
-    AtomicFormula,
-)
-from logic1.firstorder.boolean import AndOr, And, Or, Not, Implies, Equivalent
+from logic1.atomlib.sympy import AtomicFormula
+from logic1.firstorder.boolean import And, AndOr, Equivalent, Implies, Not, Or
 from logic1.firstorder.formula import Formula
 from logic1.firstorder.quantified import QuantifiedFormula
-from logic1.firstorder.truth import T, F, TruthValue
+from logic1.firstorder.truth import F, T, TruthValue
 
-
-from typing import TypeGuard, TypeVar, Any, Callable, Optional
-from enum import Enum
-
-from util import encode, inv_not, implies
-
-import logging
+from .util import encode, implies, inv_not
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -109,17 +104,30 @@ def simplify(
 
     # φ = ¬ψ
     elif isinstance(φ, Not):
-        ψ = φ.arg
+        ψ = rec(φ.arg)
         if isinstance(ψ, TruthValue):
             return encode(ψ is F)
         elif isinstance(ψ, AndOr):
             # De Morgan's Law
             return rec(ψ.dual_func(*[inv_not(x) for x in ψ.args]))
+        elif isinstance(ψ, Implies):
+            # Definition of implication using ¬ and ∨ and De Morgan's Law
+            return rec(And(ψ.args[0], inv_not(ψ.args[1])))
+        elif isinstance(ψ, Equivalent):
+            # Definition of euivalence using ¬ and ∨ and De Morgan's Law
+            return rec(
+                Or(
+                    And(ψ.args[0], inv_not(ψ.args[1])),
+                    And(ψ.args[1], inv_not(ψ.args[0])),
+                )
+            )
         elif isinstance(ψ, AtomicFormula):
             # Push negation down into atomic formula.
             return rec(ψ.complement_func(*ψ.args))
         else:
-            raise NotImplementedError("unreachable")
+            raise NotImplementedError(
+                "unreachable, cannot handle: " + str(ψ) + " " + str(type(ψ))
+            )
 
     # φ = ψ₁ ○ … ○ ψₙ where ○ is ∧ or ∨
     elif isinstance(φ, AndOr):

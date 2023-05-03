@@ -40,21 +40,24 @@
 
       in rec {
         devShell = pkgs.mkShell {
-          buildInputs = with pyPkgs; with pkgs; [
-            autoflake
-            black
-            flake8
-            pip
-            mypy
-            pytest
-            jupyter
-            ruff
-            sympy
-            pyeda
-            logic1
-          ];
-          shellHook =
-            "pip show logic1 pyeda sympy | grep -E 'Name|Version|Summary|Req|---'";
+          buildInputs = with pyPkgs;
+            with pkgs; [
+              autoflake
+              black
+              flake8
+              pip
+              mypy
+              pytest
+              jupyter
+              ruff
+              sympy
+              pyeda
+              logic1
+            ];
+          shellHook = ''
+            pip show logic1 pyeda sympy | grep -E 'Name|Version|Summary|Req|---'
+            export PYTHONPATH=..:$PYTHONPATH
+          '';
         };
       });
 }

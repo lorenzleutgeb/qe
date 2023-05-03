@@ -1,19 +1,13 @@
-from logic1.firstorder.formula import Formula, And
-from logic1.firstorder.quantified import Ex
-from logic1.atomlib.sympy import (
-    BinaryAtomicFormula,
-    Eq,
-    Le,
-    Lt,
-)
-from simplify import simplify
-
-from util import closure, conjunctive_core
-from rings import poly
-
+import enum
 import logging
 
-import enum
+from logic1.atomlib.sympy import BinaryAtomicFormula, Eq, Le, Lt
+from logic1.firstorder.formula import And, Formula
+from logic1.firstorder.quantified import Ex
+
+from .simplify import simplify
+from .theories.rings import poly
+from .util import closure, conjunctive_core
 
 
 class Bound(enum.Flag):

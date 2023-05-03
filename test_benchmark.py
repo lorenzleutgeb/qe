@@ -1,9 +1,8 @@
-from test_fixture import benchmark
-
-from simplify import simplify
-from util import size
-
 import unittest
+
+from .simplify import simplify
+from .test_fixture import benchmark
+from .util import size
 
 
 @unittest.skip("too expensive")

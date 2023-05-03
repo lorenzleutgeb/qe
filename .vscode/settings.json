@@ -1,6 +1,6 @@
 {
 	"files.exclude": {
-		"__pycache__": true,
+		"**/__pycache__": true,
 		".pytest_cache": true,
 		"**/.git": true,
 		"**/.svn": true,
@@ -14,6 +14,7 @@
 	"python.testing.pytestArgs": [
 		"--doctest-modules", 
 		"--doctest-report", "ndiff",
+		".",
 	],
 	"python.testing.unittestEnabled": false,
 	"flake8.args": [
@@ -25,4 +26,6 @@
 			"source.organizeImports": true
 		}
 	},
+	"python.linting.flake8Enabled": true,
+	"python.linting.enabled": true,
 }

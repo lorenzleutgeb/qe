@@ -1,7 +1,11 @@
-from logic1.firstorder.formula import Formula, And, Not, Or
-from logic1.firstorder.truth import TruthValue, T, F
-from logic1.firstorder.quantified import QuantifiedFormula
+import logging
+from typing import Optional
+
 from logic1.atomlib.sympy import AtomicFormula
+from logic1.firstorder import BooleanFormula
+from logic1.firstorder.formula import And, Formula, Not, Or
+from logic1.firstorder.quantified import QuantifiedFormula
+from logic1.firstorder.truth import F, T, TruthValue
 
 
 def size(φ: Formula) -> int:
@@ -67,13 +71,17 @@ def is_conjunctive(φ: Formula) -> bool:
         return False
 
 
-def matrix(φ: Formula) -> Formula:
+def matrix(φ: Formula) -> BooleanFormula | AtomicFormula:
     """
     Assumes that φ is in prenex normal form.
 
     Returns the matrix of the formula.
     """
-    return matrix(φ.arg) if isinstance(φ, QuantifiedFormula) else φ
+    if isinstance(φ, QuantifiedFormula):
+        return matrix(φ.arg)
+    else:
+        assert isinstance(φ, BooleanFormula | AtomicFormula)
+        return φ
 
 
 def conjunctive_core(φ: Formula) -> list[Formula]:
@@ -131,3 +139,10 @@ def implies(φ: Formula, ψ: Formula) -> Or:
     which in turn is equivalent to the implication φ → ψ.
     """
     return Or(inv_not(φ), ψ)
+
+
+def show_progress(flag: bool = True, logger: Optional[str] = "qe") -> None:
+    if flag:
+        logging.getLogger(logger).setLevel(logging.DEBUG)
+    else:
+        logging.getLogger(logger).setLevel(logging.WARN)

@@ -1,23 +1,13 @@
-from logic1.firstorder.formula import Formula, And
-from logic1.firstorder.quantified import Ex
-from logic1.atomlib.sympy import (
-    BinaryAtomicFormula,
-    Eq,
-    Ne,
-    Gt,
-    Lt,
-    Ge,
-    Le,
-)
-
+import logging
 from itertools import product
 
-from util import no_alternations, is_conjunctive, conjunctive_core, closure
-from bound import remove_unbounded_list, bound, Bound
-from rings import poly, make_simplify
+from logic1.atomlib.sympy import BinaryAtomicFormula, Eq, Ge, Gt, Le, Lt, Ne
+from logic1.firstorder.formula import And, Formula
+from logic1.firstorder.quantified import Ex
 
-import logging
-
+from .bound import Bound, bound, remove_unbounded_list
+from .theories.rings import make_simplify, poly
+from .util import closure, conjunctive_core, is_conjunctive, no_alternations
 
 simplify_prefer_lt = make_simplify(prefer=Lt)
 

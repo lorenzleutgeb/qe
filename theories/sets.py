@@ -11,12 +11,14 @@ T
 And(Ne(x, y), Ne(y, z))
 """
 
+from typing import Optional
+
+from logic1.atomlib.sympy import AtomicFormula, Eq, Ne
 from logic1.firstorder.formula import And, Or
 from logic1.firstorder.truth import TruthValue
-from logic1.atomlib.sympy import Eq, Ne, AtomicFormula
-from typing import Optional
-from simplify import Merge, encode, make_simplify
 from sympy import Symbol
+
+from ..simplify import Merge, encode, make_simplify
 
 
 def merge(

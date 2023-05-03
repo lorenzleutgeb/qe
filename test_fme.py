@@ -1,25 +1,16 @@
-from logic1.atomlib.sympy import (
-    Eq,
-    Gt,
-    Lt,
-    Ge,
-    Le,
-)
+import logging
+import unittest
+
+from logic1.atomlib.sympy import Eq, Ge, Gt, Le, Lt
 from logic1.firstorder.boolean import And
 from logic1.firstorder.formula import Formula
 from logic1.firstorder.quantified import Ex
-from logic1.firstorder.truth import T, F
-
+from logic1.firstorder.truth import F, T
 from sympy.abc import x, y, z
 
-from rings import make_simplify
-from fme import fme
-from util import closure, matrix
-
-import unittest
-
-import logging
-
+from .fme import fme
+from .theories.rings import make_simplify
+from .util import closure, matrix
 
 simplify_lt = make_simplify(Lt)
 

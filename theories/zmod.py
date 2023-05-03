@@ -1,108 +1,47 @@
-import logging
+from functools import partial
+from typing import Optional
 
 import sympy
-
-from logic1 import atomlib
-from logic1.firstorder.boolean import Or, T, F
+from logic1.atomlib.sympy import Eq, Ne
+from logic1.firstorder.boolean import Or
 from logic1.firstorder.formula import Formula
-from logic1.support.decorators import classproperty
 
-from qe import abc
-
-
-logging.basicConfig(
-    format='%(levelname)s[%(relativeCreated)0.0f ms]: %(message)s',
-    level=logging.CRITICAL)
-
-
-def show_progress(flag: bool = True) -> None:
-    if flag:
-        logging.getLogger().setLevel(logging.INFO)
-    else:
-        logging.getLogger().setLevel(logging.CRITICAL)
-
+from ..abc.qe import QuantifierElimination as Base
+from ..simplify import make_simplify
+from ..util import encode
 
 Term = sympy.Expr
 Variable = sympy.Symbol
 
 
-_modulus = None
+def simplify_atom(f, modulus: Optional[int] = None):
+    lhs = (f.args[0] - f.args[1]).expand(modulus=modulus)
+
+    if lhs == sympy.Integer(0):
+        return encode(isinstance(f, Eq))
+    if not lhs.free_symbols:
+        return encode(isinstance(f, Ne))
+    else:
+        return f.func(lhs, 0)
 
 
-def mod() -> int:
-    return _modulus
+def make_simplify_atom(modulus: Optional[int] = None):
+    return partial(simplify_atom, modulus=modulus)
 
 
-def set_mod(modulus: int) -> int:
-    global _modulus
-    save_modulus = _modulus
-    _modulus = modulus
-    return save_modulus
+class QuantifierElimination(Base):
+    """Quantifier elimination"""
 
+    def __init__(self, modulus: Optional[int] = None):
+        super().__init__(make_simplify(atom=make_simplify_atom(modulus=modulus)))
+        self.modulus = modulus
 
-class Eq(atomlib.sympy.Eq):
-
-    @classproperty
-    def complement_func(cls):
-        """The complement relation Ne of Eq.
-        """
-        return Ne
-
-    @classproperty
-    def converse_func(cls):
-        """The converse relation Eq of Eq.
-        """
-        return Eq
-
-    def simplify(self):
-        lhs = self.args[0] - self.args[1]
-        lhs = lhs.expand(modulus=_modulus)
-        if lhs == sympy.Integer(0):
-            return T
-        if not lhs.free_symbols:
-            return F
-        return Eq(lhs, 0)
-
-
-class Ne(atomlib.sympy.Ne):
-
-    @classproperty
-    def complement_func(cls):
-        """The complement relation Eq of Ne.
-        """
-        return Eq
-
-    @classproperty
-    def converse_func(cls):
-        """The converse relation Ne of Ne.
-        """
-        return Ne
-
-    def simplify(self):
-        lhs = self.args[0] - self.args[1]
-        lhs = lhs.expand(modulus=_modulus)
-        if lhs == sympy.Integer(0):
-            return F
-        if not lhs.free_symbols:
-            return T
-        return Ne(lhs, 0)
-
-
-class QuantifierElimination(abc.qe.QuantifierElimination):
-    """Quantifier elimination
-    """
-
-    # Instance methods
-    def __call__(self, f, modulus: int = None):
-        if modulus is not None:
-            save_modulus = set_mod(modulus)
-            result = self.qe(f)
-            set_mod(save_modulus)
-            return result
+    def __call__(self, f):
         return self.qe(f)
 
     def qe1p(self, v: Variable, f: Formula) -> Formula:
-        return Or(*(f.subs({v: i}) for i in range(_modulus))).simplify()
+        assert self.modulus is not None
+        return self.simplify(Or(*(f.subs({v: i}) for i in range(self.modulus))))
 
 
-qe = quantifier_elimination = QuantifierElimination()
+qe = quantifier_elimination = QuantifierElimination
