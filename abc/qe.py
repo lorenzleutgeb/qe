@@ -11,7 +11,7 @@ from logic1.firstorder.truth import F, T
 
 from ..util import matrix
 
-α = TypeVar("α", bound=int)
+α = TypeVar("α")
 
 Matrix = BooleanFormula | AtomicFormula
 
