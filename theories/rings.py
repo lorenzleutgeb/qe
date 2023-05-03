@@ -59,12 +59,9 @@ Le(x - 1, 0)
 Lt(x - 1, 0)
 >>> simplify(Or(Ge(x, 1), Le(x, 1)))
 T
-
-Bugs:
-
->> simplify(Equivalent(Or(Lt(x, 1), Eq(x, 1)), Le(x, 1)))
+>>> simplify(Equivalent(Or(Lt(x, 1), Eq(x, 1)), Le(x, 1)))
 T
->> simplify(Ex(x, Equivalent(Or(Lt(x, 0), Eq(x, 0)), Le(x, 0))))
+>>> simplify(Ex(x, Equivalent(Or(Lt(x, 0), Eq(x, 0)), Le(x, 0))))
 T
 """
 
@@ -108,9 +105,9 @@ def merge(
     >>> merge(And, Ge(x, 0), Ne(x, 0))
     Gt(x, 0)
     >>> merge(And, Lt(x, 0), Le(x, 0))
-    Lt(x, 0)
+    L
     >>> merge(Or, Lt(x, 0), Le(x, 0))
-    Le(x, 0)
+    R
     >>> merge(And, Eq(y**3, 0), Eq(x**2, 0)) is None
     True
     >>> merge(Or, Gt(x, 1), Lt(x, 1))
@@ -125,7 +122,7 @@ def merge(
     fs = (φ.func, ψ.func)
 
     if φ == ψ:
-        return φ
+        return Merge.L
     elif φ.args != ψ.args:
         return None
     elif φ.func == ψ.complement_func:
@@ -143,17 +140,17 @@ def merge(
             return Le(*φ.args)
 
     if fs == (Gt, Ge) or fs == (Lt, Le) or fs == (Eq, Ge) or fs == (Eq, Le):
-        return φ if op is And else ψ
+        return Merge.L if op is And else Merge.R
     elif fs == (Ge, Gt) or fs == (Le, Lt) or fs == (Ge, Eq) or fs == (Le, Eq):
-        return ψ if op is And else φ
+        return Merge.R if op is And else Merge.L
     elif fs == (Ge, Ne):
-        return Gt(*φ.args) if op is And else φ
+        return Gt(*φ.args) if op is And else Merge.L
     elif fs == (Ne, Ge):
-        return Gt(*φ.args) if op is And else ψ
+        return Gt(*φ.args) if op is And else Merge.R
     elif fs == (Le, Ne):
-        return Lt(*φ.args) if op is And else φ
+        return Lt(*φ.args) if op is And else Merge.L
     elif fs == (Ne, Le):
-        return Lt(*φ.args) if op is And else ψ
+        return Lt(*φ.args) if op is And else Merge.R
     elif fs == (Ge, Le) or fs == (Le, Ge):
         return Eq(*φ.args) if op is And else T
     elif fs == (Gt, Lt) or fs == (Lt, Gt):

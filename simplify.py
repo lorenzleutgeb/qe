@@ -28,6 +28,12 @@ class Merge(Enum):
     L = 1
     R = 2
 
+    def __str__(self) -> str:
+        return "L" if self is Merge.L else "R"
+    
+    def __repr__(self) -> str:
+        return self.__str__()
+
 
 MergeFunction = Callable[
     [type[And | Or], Atom, Atom], Optional[Merge | TruthValue | Atom]
@@ -168,16 +174,20 @@ def simplify(
                                 args[j] = None
                                 changed = True
                                 break
-                        elif merged is aj:
+                        elif merged is Merge.R:
                             args[i] = None
+                            ai = None
                             changed = True
                             break
-                        elif merged is ai:
+                        elif merged is Merge.L:
                             args[j] = None
                             changed = True
-                        else:
+                        elif isinstance(merged, AtomicFormula):
                             args[i] = merged
+                            ai = merged
                             args[j] = None
+                        else:
+                            raise NotImplementedError()
             args = list(filter(lambda x: x is not None, args))
 
         # if None in args:
