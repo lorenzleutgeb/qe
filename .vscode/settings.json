@@ -1,5 +1,6 @@
 {
 	"files.exclude": {
+		"**/.ipynb_checkpoints": true,
 		"**/__pycache__": true,
 		".pytest_cache": true,
 		"**/.git": true,
