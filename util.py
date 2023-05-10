@@ -1,12 +1,22 @@
 import logging
-from typing import Optional
+from typing import Any, Callable, Optional, TypeGuard, TypeVar
 
-from logic1.atomlib.sympy import AtomicFormula, Eq
-from logic1.firstorder import BooleanFormula
+from logic1.atomlib.sympy import Eq
+from logic1.firstorder import AtomicFormula, BooleanFormula
 from logic1.firstorder.formula import And, Formula, Not, Or
 from logic1.firstorder.quantified import QuantifiedFormula
 from logic1.firstorder.truth import F, T, TruthValue
 from sympy import Expr
+
+α = TypeVar("α")
+
+
+def list_isinstance(xs: list[Any], τ: type[α]) -> TypeGuard[list[α]]:
+    return all(isinstance(x, τ) for x in xs)
+
+
+def tuple_isinstance(xs: tuple[Any], τ: type[α]) -> TypeGuard[tuple[α]]:
+    return all(isinstance(x, τ) for x in xs)
 
 
 def size(φ: Formula) -> int:
@@ -151,3 +161,11 @@ def show_progress(flag: bool = True, logger: Optional[str] = "qe") -> None:
 
 def eq0(e: Expr) -> Eq:
     return Eq(e, 0)
+
+
+def conjunctive(φ) -> list[AtomicFormula]:
+    if isinstance(φ, And) and tuple_isinstance(φ.args, AtomicFormula):
+        return list(φ.args)
+    else:
+        assert isinstance(φ, AtomicFormula)
+        return [φ]

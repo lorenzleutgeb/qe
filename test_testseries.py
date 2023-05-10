@@ -20,4 +20,3 @@ class TestTestseries(unittest.TestCase):
         after = size(simplify(testseries2))
         self.assertLessEqual(after, before)
         self.assertLessEqual(935, after)
-

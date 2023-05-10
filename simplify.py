@@ -1,7 +1,7 @@
 import logging
 from enum import Enum
 from functools import cmp_to_key, partial
-from typing import Any, Callable, Optional, TypeGuard, TypeVar
+from typing import Callable, Optional, TypeVar
 
 from logic1.atomlib.sympy import AtomicFormula
 from logic1.firstorder.boolean import And, AndOr, Equivalent, Implies, Not, Or
@@ -9,16 +9,9 @@ from logic1.firstorder.formula import Formula
 from logic1.firstorder.quantified import QuantifiedFormula
 from logic1.firstorder.truth import F, T, TruthValue
 
-from .util import encode, implies, inv_not
+from .util import encode, implies, inv_not, list_isinstance
 
 logging.basicConfig(level=logging.DEBUG)
-
-
-α = TypeVar("α")
-
-
-def list_isinstance(xs: list[Any], τ: type[α]) -> TypeGuard[list[α]]:
-    return all(isinstance(x, τ) for x in xs)
 
 
 Atom = TypeVar("Atom", bound=AtomicFormula)

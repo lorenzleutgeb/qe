@@ -9,7 +9,7 @@ from logic1.firstorder.formula import Formula
 from logic1.firstorder.quantified import All, QuantifiedFormula
 from logic1.firstorder.truth import F, T
 
-from ..util import matrix
+from ..util import conjunctive, conjunctive_core, matrix
 
 α = TypeVar("α")
 
@@ -149,7 +149,17 @@ class QuantifierElimination(ABC, Generic[α]):
         while self.pool:
             (variables, f) = self.pool.pop()
             assert variables
-            f = self.qe1p(variables.pop(), f)
+            x = variables.pop()
+
+            (hasx, other) = ([], [])
+            for a in conjunctive_core(f):
+                (hasx if x in a.get_vars().free else other).append(a)
+
+            if hasx:
+                f = self.simplify(And(self.qe1p(x, And(*hasx)), And(*other)))
+
+            logger.info(f"{self.qe1p.__qualname__}: {f}")
+
             if not variables:
                 self.finished.append(f)
             else:
