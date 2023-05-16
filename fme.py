@@ -5,7 +5,7 @@ from logic1.atomlib.sympy import BinaryAtomicFormula, Eq, Ge, Gt, Le, Lt, Ne
 from logic1.firstorder.formula import And, Formula
 from logic1.firstorder.quantified import Ex
 
-from .bound import Bound, bound, remove_unbounded_list
+from .bound import Bound, remove_unbounded_list
 from .theories.rings import make_simplify, poly
 from .util import closure, conjunctive_core, is_conjunctive, no_alternations
 
