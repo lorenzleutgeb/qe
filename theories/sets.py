@@ -16,7 +16,7 @@ from typing import Optional
 
 from logic1.atomlib.sympy import Eq, Ne, C, C_
 from logic1.firstorder.formula import And, Formula, Or
-from logic1.firstorder.truth import TruthValue, T
+from logic1.firstorder.truth import TruthValue, F
 from sympy import Symbol
 
 from ..util import conjunctive
@@ -38,24 +38,18 @@ def merge(ctx: type[And | Or], φ: Atom, ψ: Atom) -> Optional[Merge | TruthValu
     if isinstance(φ, EqualityAtom) and isinstance(ψ, EqualityAtom):
         if φ.args == ψ.args and {φ.func, ψ.func} == {Eq, Ne}:
             return encode(ctx is Or)
-        else:
-            return None
     elif isinstance(φ, CardinalityAtom) and isinstance(ψ, CardinalityAtom):
         if isinstance(φ, C) and isinstance(ψ, C):
             if φ.index >= ψ.index:
-                return Merge.L
+                return Merge.L if ctx is And else Merge.R
             elif φ.index < ψ.index:
-                return Merge.R
-        if isinstance(φ, C_) and isinstance(ψ, C_):
+                return Merge.R if ctx is And else Merge.L
+        elif isinstance(φ, C_) and isinstance(ψ, C_):
             if φ.index >= ψ.index:
-                return Merge.R
+                return Merge.R if ctx is And else Merge.L
             elif φ.index < ψ.index:
-                return Merge.L
-        else:
-            # TODO
-            return None
-    else:
-        return None
+                return Merge.L if ctx is And else Merge.R
+    return None
 
 
 def simplify_atom(φ: Atom) -> Atom | TruthValue:
@@ -88,26 +82,21 @@ def cmp(φ: Atom, ψ: Atom) -> int:
 simplify = make_simplify(atom=simplify_atom, merge=merge, cmp=cmp)
 
 
-def eta(zs: set, k: int) -> Formula:
+def eta(k: int, zs: set[Symbol]) -> Formula:
     assert k <= len(zs)
 
+    # zs should take exactly one value, so they must all be equal.
     if k == 1:
-        return T
+        lzs: list[Symbol] = list(zs)
+        return And(*[Eq(*x) for x in zip(lzs, lzs[1:])])
 
     disj = []
-
     for choice in combinations(zs, k):
         # All elements that are not in the choice are equal to some element in the choice.
-        pick = [Eq(z, c) for z in zs for c in choice if z not in choice]
-
-        # All elements in the choice are different:
-        different = [Ne(*x) for x in combinations(choice, 2)]
-
-        if not pick:
-            disj.append(And(*different))
-        else:
-            disj.append(And(Or(*pick), And(*different)))
-
+        pick = Or(*[Eq(z, c) for z in zs for c in choice if z not in choice])
+        # All elements in the choice are pairwise different.
+        different = And(*[Ne(*x) for x in combinations(choice, 2)])
+        disj.append(different if pick == F else And(pick, different))
     return Or(*disj)
 
 
@@ -128,20 +117,19 @@ class QuantifierElimination(Base[Symbol]):
         zs: set[Symbol] = set()
 
         for a in conjunctive(φ):
-            assert isinstance(a, EqualityAtom)
-            if isinstance(a, Eq):
-                if y:
-                    continue
-                y = next(iter(a.get_vars().free - {x}))
-            else:
-                zs |= a.get_vars().free
-
-        zs.discard(x)
+            assert isinstance(a.args[0], Symbol)
+            assert isinstance(a.args[1], Symbol)
+            o = a.args[0] if a.args[1] == x else a.args[1]
+            if isinstance(a, Ne):
+                zs.add(o)
+            elif not y:
+                y = o
 
         if y:
+            # Substitute
             return And(*[Ne(x, y) for x in zs])
         else:
-            return Or(*[And(eta(zs, k), C(k + 1)) for k in range(1, len(zs) + 1)])
+            return Or(*[And(eta(k, zs), C(k + 1)) for k in range(1, len(zs) + 1)])
 
 
 qe = QuantifierElimination

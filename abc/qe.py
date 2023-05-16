@@ -10,7 +10,7 @@ from logic1.firstorder.formula import Formula
 from logic1.firstorder.quantified import All, QuantifiedFormula
 from logic1.firstorder.truth import F, T
 
-from ..util import conjunctive, conjunctive_core, matrix, var_occs
+from ..util import conjunctive_core, matrix, var_occs
 
 α = TypeVar("α")
 
@@ -145,12 +145,18 @@ class QuantifierElimination(ABC, Generic[α]):
         self.finished = []
         logger.info(f"{self.pop_block.__qualname__}: {self}")
 
-    def process_pool(self) -> None:
+    def process_pool(self) -> Optional[tuple[()]]:
         assert self.finished is not None
+        assert self.pool is not None
         while self.pool:
             (variables, f) = self.pool.pop()
             assert variables
-            x = next(filter(lambda x: x[0] in variables, Counter(var_occs(f)).most_common()))[0]
+            x = next(filter(lambda x: x[0] in variables, reversed(Counter(var_occs(f)).most_common())), (None, None))[0]
+
+            if not x:
+                # Variables to eliminate do not occur in f, done!
+                self.finished.append(f)
+                continue
 
             (hasx, other) = ([], [])
             for a in conjunctive_core(f):
@@ -158,15 +164,22 @@ class QuantifierElimination(ABC, Generic[α]):
 
             if hasx:
                 f = self.simplify(And(self.qe1p(x, And(*hasx)), And(*other)))
+                if f is T:
+                    return ()
+                variables.remove(x)
 
             logger.info(f"{self.qe1p.__qualname__}: {f}")
 
             if not variables:
+                # Done!
                 self.finished.append(f)
             else:
+                # Not done, push back to pool.
                 self.push_to_pool(variables, f)
 
-            logger.info(f"{self.process_pool.__qualname__}: {self}")
+        logger.info(f"{self.process_pool.__qualname__}: {self}")
+        assert self.pool == []
+        return None
 
     @abstractmethod
     def qe1p(self, v: α, f: Matrix) -> Matrix:
@@ -182,7 +195,7 @@ class QuantifierElimination(ABC, Generic[α]):
         if self.negated:
             disj = Not(disj)
 
-        self.matrix = disj
+        self.matrix = self.simplify(self.simplify(disj).to_dnf()).to_dnf()  # type: ignore
         self.pool = None
         self.finished = None
         self.negated = None
