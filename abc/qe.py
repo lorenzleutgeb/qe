@@ -1,3 +1,4 @@
+from collections import Counter
 import logging
 from abc import ABC, abstractmethod
 from time import time
@@ -9,7 +10,7 @@ from logic1.firstorder.formula import Formula
 from logic1.firstorder.quantified import All, QuantifiedFormula
 from logic1.firstorder.truth import F, T
 
-from ..util import conjunctive, conjunctive_core, matrix
+from ..util import conjunctive, conjunctive_core, matrix, var_occs
 
 α = TypeVar("α")
 
@@ -149,7 +150,7 @@ class QuantifierElimination(ABC, Generic[α]):
         while self.pool:
             (variables, f) = self.pool.pop()
             assert variables
-            x = variables.pop()
+            x = next(filter(lambda x: x[0] in variables, Counter(var_occs(f)).most_common()))[0]
 
             (hasx, other) = ([], [])
             for a in conjunctive_core(f):

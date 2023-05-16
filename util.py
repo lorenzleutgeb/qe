@@ -1,9 +1,10 @@
 import logging
-from typing import Any, Callable, Optional, TypeGuard, TypeVar
+from typing import Any, Callable, Optional, TypeGuard, TypeVar, Iterator
 
 from logic1.atomlib.sympy import Eq
 from logic1.firstorder import AtomicFormula, BooleanFormula
 from logic1.firstorder.formula import And, Formula, Not, Or
+from logic1.firstorder.boolean import AndOr
 from logic1.firstorder.quantified import QuantifiedFormula
 from logic1.firstorder.truth import F, T, TruthValue
 from sympy import Expr
@@ -17,6 +18,45 @@ def list_isinstance(xs: list[Any], τ: type[α]) -> TypeGuard[list[α]]:
 
 def tuple_isinstance(xs: tuple[Any], τ: type[α]) -> TypeGuard[tuple[α]]:
     return all(isinstance(x, τ) for x in xs)
+
+
+Atom = AtomicFormula | TruthValue
+
+
+def var_occs(f: Formula) -> Iterator[Any]:
+    for atom in atoms(f):
+        yield from atom.get_vars().free
+
+
+def atoms(f: Formula) -> Iterator[Atom]:
+    """
+    Generates all atoms of f.
+    """
+    if isinstance(f, Atom):
+        yield f
+    elif isinstance(f, QuantifiedFormula):
+        yield from atoms(f.arg)
+    elif isinstance(f, AndOr):
+        for arg in f.args:
+            yield from atoms(arg)
+    else:
+        raise NotImplementedError("unexpected type of formula")
+
+
+def sub(f: Formula) -> Iterator[Formula]:
+    """
+    Generates all subformulae of f.
+    """
+    yield f
+    if isinstance(f, Atom):
+        return
+    elif isinstance(f, QuantifiedFormula):
+        yield from sub(f.arg)
+    elif isinstance(f, AndOr):
+        for arg in f.args:
+            yield from sub(arg)
+    else:
+        raise NotImplementedError("unexpected type of formula")
 
 
 def size(φ: Formula) -> int:
