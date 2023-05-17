@@ -86,9 +86,9 @@ def eta(k: int, zs: set[Symbol]) -> Formula:
     disj = []
     for choice in combinations(zs, k):
         # All elements that are not in the choice are equal to some element in the choice.
-        pick = Or(*[Eq(z, c) for z in zs for c in choice if z not in choice])
+        pick = Or(*(Eq(z, c) for z in zs for c in choice if z not in choice))
         # All elements in the choice are pairwise different.
-        different = And(*[Ne(*x) for x in combinations(choice, 2)])
+        different = And(*(Ne(*x) for x in combinations(choice, 2)))
         disj.append(different if pick == F else And(pick, different))
     return Or(*disj)
 
@@ -109,9 +109,9 @@ class QuantifierElimination(Base[Symbol]):
 
         if ys:
             x = ys.pop()
-            return And(*([Ne(x, z) for z in zs] + [Eq(x, y) for y in ys]))
+            return And(*(tuple(Ne(x, z) for z in zs) + tuple(Eq(x, y) for y in ys)))
         else:
-            return Or(*[And(eta(k, zs), C(k + 1)) for k in range(1, len(zs) + 1)])
+            return Or(*(And(eta(k, zs), C(k + 1)) for k in range(1, len(zs) + 1)))
 
 
 qe = QuantifierElimination()
