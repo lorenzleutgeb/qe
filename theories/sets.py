@@ -83,13 +83,6 @@ simplify = make_simplify(atom=simplify_atom, merge=merge, cmp=cmp)
 
 
 def eta(k: int, zs: set[Symbol]) -> Formula:
-    assert k <= len(zs)
-
-    # zs should take exactly one value, so they must all be equal.
-    if k == 1:
-        lzs: list[Symbol] = list(zs)
-        return And(*[Eq(*x) for x in zip(lzs, lzs[1:])])
-
     disj = []
     for choice in combinations(zs, k):
         # All elements that are not in the choice are equal to some element in the choice.
@@ -110,24 +103,16 @@ class QuantifierElimination(Base[Symbol]):
         return self.qe(f)
 
     def qe1p(self, x: Symbol, φ: Formula) -> Formula:
-        # Possible replacement for x.
-        y: Optional[Symbol] = None
-
-        # Variables that are unequal to x.
-        zs: set[Symbol] = set()
+        ys: set[Symbol] = set()  # Variables that are   equal to x.
+        zs: set[Symbol] = set()  # Variables that are unequal to x.
 
         for a in conjunctive(φ):
-            assert isinstance(a.args[0], Symbol)
-            assert isinstance(a.args[1], Symbol)
-            o = a.args[0] if a.args[1] == x else a.args[1]
-            if isinstance(a, Ne):
-                zs.add(o)
-            elif not y:
-                y = o
+            assert isinstance(a.args[0], Symbol) and isinstance(a.args[1], Symbol)
+            (zs if isinstance(a, Ne) else ys).add(a.args[0] if a.args[1] == x else a.args[1])
 
-        if y:
-            # Substitute
-            return And(*[Ne(x, y) for x in zs])
+        if ys:
+            x = ys.pop()
+            return And(*([Ne(x, z) for z in zs] + [Eq(x, y) for y in ys]))
         else:
             return Or(*[And(eta(k, zs), C(k + 1)) for k in range(1, len(zs) + 1)])
 
