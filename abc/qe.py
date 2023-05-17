@@ -10,7 +10,7 @@ from logic1.firstorder.formula import Formula
 from logic1.firstorder.quantified import All, QuantifiedFormula
 from logic1.firstorder.truth import F, T
 
-from ..util import conjunctive_core, matrix, var_occs
+from ..util import conjunctive_core, matrix, var_occs, blocks
 
 α = TypeVar("α")
 
@@ -86,6 +86,9 @@ class QuantifierElimination(ABC, Generic[α]):
         self.pool = None
         self.finished = [T]
 
+    def __call__(self, f):
+        return self.qe(f)
+
     def qe(self, f: Formula) -> Formula:
         f = self.simplify(f)
         logging._startTime = time()  # type: ignore
@@ -98,26 +101,15 @@ class QuantifierElimination(ABC, Generic[α]):
             self.collect_finished()
 
         assert self.matrix is not None
-        return self.simplify(self.matrix.to_nnf())
+        f = self.simplify(self.simplify(self.matrix).to_dnf()).to_dnf()  # type: ignore
+        self.matrix = None
+        return f
 
     def setup(self, f: Formula) -> None:
         f = f.to_pnf()
 
         if not self.blocks:
-            self.blocks = []
-            q: Optional[type[QuantifiedFormula]] = None
-            xs: list[α] = []
-            fp = f
-            while isinstance(fp, QuantifiedFormula):
-                if q == fp.func:
-                    xs.append(fp.var)
-                else:
-                    if q:
-                        self.blocks.append((q, xs))
-                    (q, xs) = (fp.func, [fp.var])
-                fp = fp.arg
-            if q:
-                self.blocks.append((q, xs))
+            self.blocks = blocks(f)
 
         if not self.matrix:
             self.matrix = matrix(f)
@@ -195,7 +187,7 @@ class QuantifierElimination(ABC, Generic[α]):
         if self.negated:
             disj = Not(disj)
 
-        self.matrix = self.simplify(self.simplify(disj).to_dnf()).to_dnf()  # type: ignore
+        self.matrix = disj
         self.pool = None
         self.finished = None
         self.negated = None

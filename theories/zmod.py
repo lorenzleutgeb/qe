@@ -27,7 +27,7 @@ from logic1.firstorder.formula import Formula
 from sympy import Integer, Symbol
 
 from ..abc.qe import QuantifierElimination as Base
-from ..simplify import make_simplify
+from ..simplify import make_simplify as base_make_simplify
 from ..util import encode
 from .rings import term_cmp as cmp
 
@@ -43,25 +43,23 @@ def simplify_atom(f, modulus: Optional[int] = None):
         return f.func(lhs, 0)
 
 
-def make_simplify_atom(modulus: Optional[int] = None):
-    return partial(simplify_atom, modulus=modulus)
+def make_simplify(modulus: int):
+    return base_make_simplify(atom=partial(simplify_atom, modulus=modulus), cmp=cmp)
 
 
 class QuantifierElimination(Base[Symbol]):
     """Quantifier elimination"""
 
-    def __init__(self, modulus: Optional[int] = None):
-        super().__init__(
-            make_simplify(atom=make_simplify_atom(modulus=modulus), cmp=cmp)
-        )
+    def __init__(self, modulus: int):
+        super().__init__(make_simplify(modulus))
         self.modulus = modulus
 
-    def __call__(self, f):
-        return self.qe(f)
+    def set_modulus(self, modulus: int):
+        self.simplify = make_simplify(modulus)
+        self.modulus = modulus
 
     def qe1p(self, v: Symbol, f: Formula) -> Formula:
-        assert self.modulus is not None
         return self.simplify(Or(*(f.subs({v: i}) for i in range(self.modulus))))
 
 
-qe = quantifier_elimination = QuantifierElimination
+qe = QuantifierElimination

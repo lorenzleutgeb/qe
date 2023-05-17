@@ -99,9 +99,6 @@ class QuantifierElimination(Base[Symbol]):
     def __init__(self):
         super().__init__(simplify=simplify)
 
-    def __call__(self, f):
-        return self.qe(f)
-
     def qe1p(self, x: Symbol, φ: Formula) -> Formula:
         ys: set[Symbol] = set()  # Variables that are   equal to x.
         zs: set[Symbol] = set()  # Variables that are unequal to x.
@@ -117,4 +114,4 @@ class QuantifierElimination(Base[Symbol]):
             return Or(*[And(eta(k, zs), C(k + 1)) for k in range(1, len(zs) + 1)])
 
 
-qe = QuantifierElimination
+qe = QuantifierElimination()

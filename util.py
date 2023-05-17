@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Callable, Optional, TypeGuard, TypeVar, Iterator
+from typing import Any, Optional, TypeGuard, TypeVar, Iterator
 
 from logic1.atomlib.sympy import Eq
 from logic1.firstorder import AtomicFormula, BooleanFormula
@@ -20,19 +20,18 @@ def tuple_isinstance(xs: tuple[Any], τ: type[α]) -> TypeGuard[tuple[α]]:
     return all(isinstance(x, τ) for x in xs)
 
 
-Atom = AtomicFormula | TruthValue
-
-
 def var_occs(f: Formula) -> Iterator[Any]:
     for atom in atoms(f):
         yield from atom.get_vars().free
 
 
-def atoms(f: Formula) -> Iterator[Atom]:
+def atoms(f: Formula) -> Iterator[AtomicFormula]:
     """
     Generates all atoms of f.
     """
-    if isinstance(f, Atom):
+    if isinstance(f, TruthValue):
+        return
+    if isinstance(f, AtomicFormula):
         yield f
     elif isinstance(f, QuantifiedFormula):
         yield from atoms(f.arg)
@@ -48,7 +47,7 @@ def sub(f: Formula) -> Iterator[Formula]:
     Generates all subformulae of f.
     """
     yield f
-    if isinstance(f, Atom):
+    if isinstance(f, AtomicFormula | TruthValue):
         return
     elif isinstance(f, QuantifiedFormula):
         yield from sub(f.arg)
@@ -68,9 +67,13 @@ def size(φ: Formula) -> int:
         return sum(map(size, φ.args))
 
 
-def closure(τ: type[QuantifiedFormula], φ: Formula) -> Formula:
-    for var in φ.get_vars().free:
-        φ = τ(var, φ)
+def closure(τ: type[QuantifiedFormula], φ: Formula, xs: Optional[set] = None) -> Formula:
+    if xs is None:
+        xs = φ.get_vars().free
+    else:
+        xs &= φ.get_vars().free
+    for x in xs:
+        φ = τ(x, φ)
     return φ
 
 
@@ -203,9 +206,29 @@ def eq0(e: Expr) -> Eq:
     return Eq(e, 0)
 
 
-def conjunctive(φ) -> list[AtomicFormula]:
+def conjunctive(φ: Formula) -> tuple[AtomicFormula]:
     if isinstance(φ, And) and tuple_isinstance(φ.args, AtomicFormula):
-        return list(φ.args)
-    else:
+        return φ.args
+    elif isinstance(φ, AtomicFormula):
         assert isinstance(φ, AtomicFormula)
-        return [φ]
+        return (φ,)
+    else:
+        raise ValueError("formula is not conjunctive or not free of truth values")
+
+
+def blocks(f: Formula) -> list[tuple[type[QuantifiedFormula], list[α]]]:
+    result = []
+    q: Optional[type[QuantifiedFormula]] = None
+    xs: list[α] = []
+    fp = f
+    while isinstance(fp, QuantifiedFormula):
+        if q == fp.func:
+            xs.append(fp.var)
+        else:
+            if q:
+                result.append((q, xs))
+            (q, xs) = (fp.func, [fp.var])
+        fp = fp.arg
+    if q:
+        result.append((q, xs))
+    return result
