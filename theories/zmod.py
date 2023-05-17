@@ -22,8 +22,11 @@ from functools import partial
 from typing import Optional
 
 from logic1.atomlib.sympy import Eq, Ne
-from logic1.firstorder.boolean import Or
-from logic1.firstorder.formula import Formula
+from logic1.firstorder.truth import TruthValue
+from logic1.firstorder.quantified import QuantifiedFormula
+from logic1.firstorder.boolean import Or, And, AndOr, Implies, Equivalent
+from logic1.firstorder import AtomicFormula
+from logic1.firstorder.formula import Formula, Ex
 from sympy import Integer, Symbol
 
 from ..abc.qe import QuantifierElimination as Base
@@ -48,8 +51,6 @@ def make_simplify(modulus: int):
 
 
 class QuantifierElimination(Base[Symbol]):
-    """Quantifier elimination"""
-
     def __init__(self, modulus: int):
         super().__init__(make_simplify(modulus))
         self.modulus = modulus
@@ -60,6 +61,27 @@ class QuantifierElimination(Base[Symbol]):
 
     def qe1p(self, v: Symbol, f: Formula) -> Formula:
         return self.simplify(Or(*(f.subs({v: i}) for i in range(self.modulus))))
+
+    def ground(self, f: Formula) -> Formula:
+        if isinstance(f, TruthValue | AtomicFormula):
+            return f
+        elif isinstance(f, AndOr):
+            return f.func(*map(self.ground, f.args))
+        elif isinstance(f, Implies):
+            return Implies(*map(self.ground, f.args))
+        elif isinstance(f, Equivalent):
+            return Equivalent(*map(self.ground, f.args))
+        elif isinstance(f, QuantifiedFormula):
+            func = (Or if isinstance(f, Ex) else And)
+            return self.ground(func(*(f.arg.subs({f.var: i}) for i in range(self.modulus))))
+        else:
+            raise NotImplementedError()
+
+    def qe(self, f: Formula, alternative: bool = False):
+        return self.simplify(self.ground(f)) if alternative else super().qe(f)
+
+    def __call__(self, f, alternative: bool = False):
+        return self.qe(f, alternative=alternative)
 
 
 qe = QuantifierElimination
