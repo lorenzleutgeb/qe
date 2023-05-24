@@ -6,10 +6,10 @@ from logic1.firstorder.formula import And, Formula
 from logic1.firstorder.quantified import Ex
 
 from .bound import Bound, remove_unbounded_list
-from .theories.rings import make_simplify, poly
+from .theories.rings import poly, Simplifier
 from .util import closure, conjunctive_core, is_conjunctive, no_alternations
 
-simplify_prefer_lt = make_simplify(prefer=Lt)
+simplify_prefer_lt = Simplifier(prefer=Lt)
 
 
 def applicable(φ: Formula) -> bool:

@@ -7,8 +7,7 @@ from logic1.atomlib.sympy import Eq, Le, Lt, Ge, Gt
 from logic1.firstorder.formula import And, Formula
 from logic1.firstorder.quantified import Ex
 
-from .simplify import simplify
-from .theories.rings import poly
+from .theories.rings import poly, simplify
 from .util import closure, conjunctive_core
 
 Atom = Eq | Le | Lt | Gt | Ge

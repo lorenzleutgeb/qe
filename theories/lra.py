@@ -1,79 +1,67 @@
 import logging
 from itertools import product
 
-from logic1.atomlib.sympy import BinaryAtomicFormula, Eq, Ge, Gt, Le, Lt, Ne
+from logic1.atomlib.sympy import Eq, Ge, Gt, Le, Lt
 from logic1.firstorder.formula import And, Formula
-from logic1.firstorder.quantified import Ex
+from logic1.firstorder.truth import T
 from sympy import Symbol
 
 from ..abc.qe import QuantifierElimination as Base
 from ..bound import Bound
-from ..util import closure
-from .rings import make_simplify, poly
+from ..util import conjunctive
+from .rings import Simplifier, poly
 
 Atom = Le | Lt | Ge | Gt | Eq
 
 
 def combine_op(
     lower: Le | Lt | Eq, upper: Le | Lt | Eq
-) -> type[BinaryAtomicFormula]:
+) -> type[Le | Lt | Eq]:
     if isinstance(lower, Le) and isinstance(upper, Le):
         return Le
-    if isinstance(lower, Lt | Le) and isinstance(upper, Lt | Le):
+    elif isinstance(lower, Lt | Le) and isinstance(upper, Lt | Le):
         return Lt
-    if isinstance(lower, Eq):
+    elif isinstance(lower, Eq):
         return type(upper)
-    if isinstance(upper, Eq):
+    elif isinstance(upper, Eq):
         return type(lower)
-    raise NotImplementedError()
+    else:
+        raise NotImplementedError()
 
 
 class QuantifierElimination(Base[Symbol]):
     def __init__(self):
-        super().__init__(make_simplify())
+        super().__init__(simplify=Simplifier())
 
     def qe1p(self, x: Symbol, φ: Formula) -> Formula:
-        """
-        Assumes that φ is in prenex normal form and in conjunctive normal form.
-        """
         if x not in φ.get_vars().free:
             return φ
 
-        rows: list[BinaryAtomicFormula] = list(φ.args) if isinstance(φ, And) else [φ]  # type: ignore
-
         upper: list[Atom] = []
         lower: list[Atom] = []
-        (both, result) = ([], [])
+        both: list[Atom] = []
 
-        for row in rows:
-            if not isinstance(row, BinaryAtomicFormula):
-                raise NotImplementedError("atoms must be binary")
-            if row.args[1] != 0:
+        for row in conjunctive(φ):
+            if not isinstance(row, Atom):
+                raise NotImplementedError("unknown relation of type " + str(type(row)))
+            elif row.args[1] != 0:
                 raise NotImplementedError("rhs must be zero")
-            if isinstance(row, Ne) or isinstance(row, Gt) or isinstance(row, Ge):
-                raise NotImplementedError("cannot handle relation " + str(row.func))
-            if (
-                not isinstance(row, Le)
-                and not isinstance(row, Lt)
-                and not isinstance(row, Eq)
-            ):
-                raise NotImplementedError("unknown relation of type " + str(type(φ)))
 
             b = Bound.of(row, x)
             logging.debug(str(row) + " is " + str(b) + " for " + str(x))
-            if not b:
-                result.append(row)
-            elif b == Bound.UPPER | Bound.LOWER:
+            if b == Bound.BOTH:
                 both.append(row)
             else:
                 (upper if b == Bound.UPPER else lower).append(row)
 
         logging.debug(
-            "(upper, lower, both, result) = " + str((upper, lower, both, result))
+            "(upper, lower, both) = " + str((upper, lower, both))
         )
 
+        result: list[Atom] = []
+
         if not both and (not upper or not lower):
-            ...
+            return T
         elif both:
             # There is at least one equation for x,
             # so we can use it to substitute x in
@@ -86,7 +74,8 @@ class QuantifierElimination(Base[Symbol]):
                 b = p.coeff_monomial(x)
                 p = (p - (b * x).as_poly()) * a
                 p = p + (-b * e)
-                result.append((row.func)(p.as_expr(), 0))  # type: ignore
+                result.append((row.func)(p.as_expr(), 0))
+            return And(*result)
         else:
             # Blow up exponentially!
             for (loweri, upperi) in product(lower, upper):

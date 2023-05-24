@@ -1,6 +1,6 @@
 import unittest
 
-from .simplify import simplify
+from .theories.rings import simplify
 from .testseries1 import testseries1
 from .testseries2 import testseries2
 from .util import size

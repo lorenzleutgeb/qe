@@ -10,9 +10,9 @@ from sympy.abc import x, y, z
 
 from ..util import closure, show_progress
 from .lra import qe
-from .rings import make_simplify
+from .rings import Simplifier
 
-simplify_lt = make_simplify(prefer=Lt)
+simplify_lt = Simplifier(prefer=Lt)
 
 
 def exsimp(*conj: Formula) -> Formula:

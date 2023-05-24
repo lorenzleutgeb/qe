@@ -143,7 +143,8 @@ class QuantifierElimination(ABC, Generic[α]):
         while self.pool:
             (variables, f) = self.pool.pop()
             assert variables
-            x = next(filter(lambda x: x[0] in variables, reversed(Counter(var_occs(f)).most_common())), (None, None))[0]
+            counter = Counter(var_occs(f)).most_common()
+            x = next(filter(lambda x: x[0] in variables, reversed(counter)), (None, None))[0]
 
             if not x:
                 # Variables to eliminate do not occur in f, done!

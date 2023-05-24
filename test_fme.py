@@ -9,10 +9,10 @@ from logic1.firstorder.truth import F, T
 from sympy.abc import x, y, z
 
 from .fme import fme
-from .theories.rings import make_simplify
+from .theories.rings import Simplifier
 from .util import closure, matrix
 
-simplify_lt = make_simplify(Lt)
+simplify_lt = Simplifier(Lt)
 
 
 def exsimp(*conj: Formula) -> Formula:
