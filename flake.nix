@@ -38,23 +38,48 @@
             buildInputs = [ pyeda sympy typing-extensions ];
           };
 
+        flameprof = pyPkgs.buildPythonPackage rec {
+          pname = "flameprof";
+          version = "0.4";
+          src = pyPkgs.fetchPypi {
+            inherit version;
+            inherit pname;
+            hash = "sha256-28htQZDLu6Yk8eCkD0TZ25YTjidTTYPI70LUIIV4daM=";
+          };
+        };
+
+        pyflame = pyPkgs.buildPythonPackage rec {
+          pname = "pyflame";
+          version = "0.3.1";
+          doCheck = false;
+
+          src = pyPkgs.fetchPypi {
+            inherit version;
+            inherit pname;
+            hash = "sha256-1NcQqRe/EnVGdeBY+20Hw3bKUoMaEfj404s0JsXwY0g=";
+          };
+        };
+
       in rec {
         devShell = pkgs.mkShell {
-          buildInputs = (with pkgs; [ autoflake ruff ]) ++ (with pyPkgs; [
-            black
-            flake8
-            pip
-            mypy
-            pytest
-            jupyter
-            sympy
-            typing-extensions
-            pyeda
-          ]) ++ [ logic1 ];
+          buildInputs = (with pkgs; [ autoflake flamegraph ruff ])
+            ++ (with pyPkgs; [
+              black
+              flake8
+              pip
+              mypy
+              pyflame
+              pytest
+              jupyter
+              sympy
+              typing-extensions
+              pyeda
+            ]) ++ [ logic1 ];
           shellHook = ''
             pip show logic1 pyeda sympy | grep -E 'Name|Version|Summary|Req|---'
             export PYTHONPATH=..:$PYTHONPATH
           '';
+	  IPYTHONDIR = "./.ipython";
         };
       });
 }

@@ -1,0 +1,11 @@
+#! /usr/bin/env bash
+set -euo pipefail
+
+PYTHON_VERSION="3.10"
+CUR=${PWD/#$HOME/'~'}
+
+sed "
+s#/nix/store/.*-python${PYTHON_VERSION}.*/lib/python${PYTHON_VERSION}/\\(site-packages/\\)\\{0,1\\}##g;
+s#${CUR}#\!#g
+" \
+| flamegraph.pl $@

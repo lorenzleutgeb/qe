@@ -1,4 +1,6 @@
 *.whl
+*.svg
+*.prof
 
 # Created by https://www.toptal.com/developers/gitignore/api/python,linux,windows
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,linux,windows
